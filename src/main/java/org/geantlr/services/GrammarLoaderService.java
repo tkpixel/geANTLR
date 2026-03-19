@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -19,6 +20,8 @@ import java.util.stream.Stream;
  */
 @Singleton
 public class GrammarLoaderService implements IGrammarLoaderService {
+
+    private final List<File> importDirectories = new ArrayList<>();
 
     @Override
     public List<Path> findGrammarFiles(File directory) {
@@ -51,10 +54,23 @@ public class GrammarLoaderService implements IGrammarLoaderService {
             throw new IllegalArgumentException("Invalid grammar file provided.");
         }
 
-        // Initialize ANTLR Tool
-        Tool tool = new Tool();
+        // Initialize ANTLR Tool with a custom import resolution strategy
+        Tool tool = new Tool() {
+            @Override
+            public File getImportedGrammarFile(Grammar g, String fileName) {
+                // Try explicitly added import directories first
+                for (File dir : importDirectories) {
+                    File candidate = new File(dir, fileName);
+                    if (candidate.exists() && candidate.isFile()) {
+                        return candidate;
+                    }
+                }
+                // Fallback to the original logic (e.g. checking libDirectory)
+                return super.getImportedGrammarFile(g, fileName);
+            }
+        };
 
-        // Ensure the directory of the file is in the library path so it can resolve imports if needed
+        // Ensure the directory of the file is in the library path so it can resolve imports if needed locally
         tool.libDirectory = grammarFile.getParentFile().getAbsolutePath();
 
         // 2. Instantiate Grammar object.
@@ -109,5 +125,26 @@ public class GrammarLoaderService implements IGrammarLoaderService {
         }
 
         return dynamicGrammar;
+    }
+
+    @Override
+    public void addImportDirectory(File directory) {
+        if (directory != null && directory.exists() && directory.isDirectory()) {
+            if (!importDirectories.contains(directory)) {
+                importDirectories.add(directory);
+            }
+        } else {
+            throw new IllegalArgumentException("Invalid directory provided for grammar imports.");
+        }
+    }
+
+    @Override
+    public List<File> getImportDirectories() {
+        return Collections.unmodifiableList(importDirectories);
+    }
+
+    @Override
+    public void clearImportDirectories() {
+        importDirectories.clear();
     }
 }
