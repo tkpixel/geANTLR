@@ -60,6 +60,14 @@ public class EditorViewController {
             });
 
             editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
+
+            // Listen to caret position
+            editorCodeArea.caretPositionProperty().addListener((obs, oldVal, newVal) -> {
+                if (newVal != null) {
+                    int caretIndex = newVal.offset();
+                    viewModel.onCaretPositionChanged(caretIndex);
+                }
+            });
         }
     }
 

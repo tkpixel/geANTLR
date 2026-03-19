@@ -9,6 +9,7 @@ module org.geantlr {
     requires org.kordamp.ikonli.materialdesign2;
     requires org.antlr.antlr4.runtime;
     requires antlr4;
+    requires antlr4.c3;
 
     requires io.micronaut.inject;
     requires jakarta.inject;
