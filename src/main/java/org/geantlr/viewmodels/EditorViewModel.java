@@ -21,6 +21,7 @@ import java.util.concurrent.CompletableFuture;
 public class EditorViewModel {
 
     private final StringProperty textContent = new SimpleStringProperty("");
+    private final javafx.beans.property.IntegerProperty fontSize = new javafx.beans.property.SimpleIntegerProperty(13);
     private final ObservableList<SyntaxError> errors = FXCollections.observableArrayList();
     private final ObservableList<String> suggestedTokens = FXCollections.observableArrayList();
 
@@ -78,6 +79,18 @@ public class EditorViewModel {
 
     public void setTextContent(String text) {
         this.textContent.set(text);
+    }
+
+    public javafx.beans.property.IntegerProperty fontSizeProperty() {
+        return fontSize;
+    }
+
+    public int getFontSize() {
+        return fontSize.get();
+    }
+
+    public void setFontSize(int size) {
+        this.fontSize.set(size);
     }
 
     public ObservableList<String> getSuggestedTokens() {

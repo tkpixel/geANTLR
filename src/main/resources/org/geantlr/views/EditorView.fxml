@@ -10,7 +10,7 @@
            style="-fx-border-color: gray; -fx-background-color: -color-bg-default;">
 
     <center>
-        <CodeArea fx:id="editorCodeArea" wrapText="true"/>
+        <CodeArea fx:id="editorCodeArea" wrapText="true" styleClass="editor-code-area"/>
     </center>
 
     <bottom>

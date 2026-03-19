@@ -1,8 +1,4 @@
 .root {
-    /* Set the requested primary background color */
-    -color-bg-default: #16161a;
-    -color-bg-subtle: #16161a;
-
     /* Set the requested secondary color */
     -color-accent-emphasis: #5747a6;
     -color-accent-fg: #5747a6;
@@ -10,6 +6,32 @@
     /* Undecorated window styling */
     -fx-border-color: -color-border-default;
     -fx-border-width: 1px;
+}
+
+/* Custom CodeArea styling for better readability */
+.editor-code-area {
+    -fx-font-family: "Consolas", "Courier New", monospace;
+}
+
+/* Color the main editor text */
+.editor-code-area .content .text {
+    -fx-fill: -color-fg-default;
+}
+
+/* Style the line numbers in the primary accent color - Force with !important */
+.editor-code-area .left-side .text,
+.editor-code-area .left-side .line-number,
+.editor-code-area .line-number {
+    -fx-fill: -color-accent-emphasis !important;
+    -fx-text-fill: -color-accent-emphasis !important;
+    -fx-font-weight: bold !important;
+}
+
+/* Ensure the gutter area is visible and has a separator */
+.editor-code-area .left-side {
+    -fx-border-color: transparent -color-border-default transparent transparent !important;
+    -fx-border-width: 0 1 0 0 !important;
+    -fx-padding: 0 5 0 0 !important;
 }
 
 /* Custom Title Bar Styling */
@@ -57,9 +79,11 @@
 .pill-button {
     -fx-background-radius: 15px;
     -fx-border-radius: 15px;
+    -fx-text-fill: -color-fg-default;
 }
 
 .pill-button:focused {
     -fx-background-radius: 15px;
     -fx-border-radius: 15px;
+    -fx-text-fill: -color-fg-default;
 }
