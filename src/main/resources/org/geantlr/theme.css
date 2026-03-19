@@ -6,4 +6,49 @@
     /* Set the requested secondary color */
     -color-accent-emphasis: #5747a6;
     -color-accent-fg: #5747a6;
+
+    /* Undecorated window styling */
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1px;
+}
+
+/* Custom Title Bar Styling */
+.title-bar {
+    -fx-background-color: -color-bg-subtle;
+    -fx-padding: 8px 10px;
+    -fx-border-color: -color-border-muted;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.title-label {
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-fg-default;
+}
+
+.window-btn {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 5px;
+    -fx-cursor: hand;
+}
+
+.window-btn > .ikonli-font-icon {
+    -fx-fill: -color-fg-muted;
+}
+
+.window-btn:hover {
+    -fx-background-color: -color-bg-overlay;
+    -fx-background-radius: 4px;
+}
+
+.window-btn:hover > .ikonli-font-icon {
+    -fx-fill: -color-fg-default;
+}
+
+.close-btn:hover {
+    -fx-background-color: #e81123; /* Windows close red */
+}
+
+.close-btn:hover > .ikonli-font-icon {
+    -fx-fill: white;
 }
