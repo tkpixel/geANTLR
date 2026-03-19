@@ -28,6 +28,7 @@ import org.geantlr.services.IGrammarLoaderService;
 import org.geantlr.services.DynamicGrammar;
 import org.kordamp.ikonli.javafx.FontIcon;
 import javafx.stage.FileChooser;
+import javafx.stage.DirectoryChooser;
 import javafx.scene.control.Alert;
 
 @Singleton
@@ -113,6 +114,42 @@ public class MainViewController {
         } else if (viewModel.getActiveEditors().size() == 2) {
             viewModel.removeEditor(viewModel.getActiveEditors().get(1));
         }
+    }
+
+    @FXML
+    private void addImportDirectory() {
+        DirectoryChooser dirChooser = new DirectoryChooser();
+        dirChooser.setTitle("Select Import Directory for Grammars");
+
+        Stage stage = (Stage) editorSplitPane.getScene().getWindow();
+        File selectedDir = dirChooser.showDialog(stage);
+
+        if (selectedDir != null) {
+            try {
+                grammarLoaderService.addImportDirectory(selectedDir);
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Import Directory Added");
+                alert.setHeaderText("Success");
+                alert.setContentText("Added directory '" + selectedDir.getName() + "' for resolving imported grammars.\nTotal import directories: " + grammarLoaderService.getImportDirectories().size());
+                alert.showAndWait();
+            } catch (Exception e) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Error Adding Directory");
+                alert.setHeaderText("Failed to add import directory");
+                alert.setContentText(e.getMessage());
+                alert.showAndWait();
+            }
+        }
+    }
+
+    @FXML
+    private void clearImportDirectories() {
+        grammarLoaderService.clearImportDirectories();
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Import Directories Cleared");
+        alert.setHeaderText("Success");
+        alert.setContentText("All custom import directories have been cleared.");
+        alert.showAndWait();
     }
 
     @FXML

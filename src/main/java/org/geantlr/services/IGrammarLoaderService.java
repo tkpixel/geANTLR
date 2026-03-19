@@ -35,4 +35,23 @@ public interface IGrammarLoaderService {
      * @throws Exception If compilation fails or the grammar is invalid.
      */
     DynamicGrammar loadDynamicGrammar(File grammarFile) throws Exception;
+
+    /**
+     * Adds a directory to the list of paths used to resolve imported grammars.
+     *
+     * @param directory The directory to add.
+     */
+    void addImportDirectory(File directory);
+
+    /**
+     * Gets the current list of custom import directories.
+     *
+     * @return A list of import directories.
+     */
+    List<File> getImportDirectories();
+
+    /**
+     * Clears the list of custom import directories.
+     */
+    void clearImportDirectories();
 }

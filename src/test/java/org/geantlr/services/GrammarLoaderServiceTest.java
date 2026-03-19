@@ -100,4 +100,57 @@ class GrammarLoaderServiceTest {
             service.loadDynamicGrammar(new File("nonexistent_file.g4"));
         }, "Should throw exception for nonexistent file");
     }
+
+    @Test
+    void testImportDirectoriesManagement() throws Exception {
+        assertTrue(service.getImportDirectories().isEmpty());
+
+        File newDir = tempDir.toFile();
+        service.addImportDirectory(newDir);
+        assertEquals(1, service.getImportDirectories().size());
+        assertTrue(service.getImportDirectories().contains(newDir));
+
+        service.clearImportDirectories();
+        assertTrue(service.getImportDirectories().isEmpty());
+    }
+
+    @Test
+    void testLoadDynamicGrammarWithImports() throws Exception {
+        Path importDir1 = Files.createTempDirectory("importDir1");
+        Path importDir2 = Files.createTempDirectory("importDir2");
+        Path mainDir = Files.createTempDirectory("mainDir");
+
+        try {
+            // Create A.g4 in importDir1
+            Path aFile = Files.createFile(importDir1.resolve("A.g4"));
+            Files.writeString(aFile, "grammar A; a : 'a' ;");
+
+            // Create B.g4 in importDir2, imports A
+            Path bFile = Files.createFile(importDir2.resolve("B.g4"));
+            Files.writeString(bFile, "grammar B; import A; b : a ;");
+
+            // Create C.g4 in mainDir, imports B
+            Path cFile = Files.createFile(mainDir.resolve("C.g4"));
+            Files.writeString(cFile, "grammar C; import B; c : b ;");
+
+            // We must add importDir1 and importDir2 so C can find B, and B can find A
+            service.addImportDirectory(importDir1.toFile());
+            service.addImportDirectory(importDir2.toFile());
+
+            DynamicGrammar grammar = service.loadDynamicGrammar(cFile.toFile());
+
+            assertNotNull(grammar);
+            assertNotNull(grammar.getParserGrammar());
+            assertEquals("C", grammar.getParserGrammar().name);
+            // It should have resolved imports successfully
+            assertTrue(grammar.getParserGrammar().rules.size() > 0);
+        } finally {
+            Files.deleteIfExists(importDir1.resolve("A.g4"));
+            Files.deleteIfExists(importDir1);
+            Files.deleteIfExists(importDir2.resolve("B.g4"));
+            Files.deleteIfExists(importDir2);
+            Files.deleteIfExists(mainDir.resolve("C.g4"));
+            Files.deleteIfExists(mainDir);
+        }
+    }
 }
