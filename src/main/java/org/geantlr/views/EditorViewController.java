@@ -79,7 +79,7 @@ public class EditorViewController {
                 suggestionsPane.getChildren().clear();
                 for (String token : this.viewModel.getSuggestedTokens()) {
                     Button btn = new Button(token);
-                    btn.getStyleClass().addAll("button", "pill", "small", "accent");
+                    btn.getStyleClass().addAll("pill-button");
                     // On click, append text (simple demo action)
                     btn.setOnAction(e -> {
                         String cleanToken = token.startsWith("'") && token.endsWith("'")
