@@ -45,6 +45,11 @@
                 <FontIcon iconLiteral="mdi2p-page-layout-body" iconSize="20"/>
             </graphic>
         </Button>
+        <Button text="Load Grammar" onAction="#loadGrammar">
+            <graphic>
+                <FontIcon iconLiteral="mdi2f-file-code-outline" iconSize="20"/>
+            </graphic>
+        </Button>
     </ToolBar>
 
     <SplitPane fx:id="editorSplitPane" VBox.vgrow="ALWAYS" dividerPositions="0.5">

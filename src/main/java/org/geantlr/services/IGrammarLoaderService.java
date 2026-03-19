@@ -26,4 +26,13 @@ public interface IGrammarLoaderService {
      * @throws IOException If an error occurs reading the file.
      */
     String loadGrammarContent(File grammarFile) throws IOException;
+
+    /**
+     * Loads and compiles a grammar file into a dynamic grammar model capable of parsing text.
+     *
+     * @param grammarFile The grammar file to parse.
+     * @return A DynamicGrammar instance representing the parsed grammar and its internal ATN models.
+     * @throws Exception If compilation fails or the grammar is invalid.
+     */
+    DynamicGrammar loadDynamicGrammar(File grammarFile) throws Exception;
 }

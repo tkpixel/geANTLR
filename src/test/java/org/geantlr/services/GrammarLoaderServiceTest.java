@@ -26,11 +26,11 @@ class GrammarLoaderServiceTest {
         tempDir = Files.createTempDirectory("grammarTest");
 
         // Create some dummy .g4 files and a .txt file
-        grammarFile1 = Files.createFile(tempDir.resolve("test1.g4"));
-        Files.writeString(grammarFile1, "grammar Test1;");
+        grammarFile1 = Files.createFile(tempDir.resolve("Test1.g4"));
+        Files.writeString(grammarFile1, "grammar Test1; a : 'b' ;");
 
-        grammarFile2 = Files.createFile(tempDir.resolve("test2.g4"));
-        Files.writeString(grammarFile2, "grammar Test2;");
+        grammarFile2 = Files.createFile(tempDir.resolve("Test2.g4"));
+        Files.writeString(grammarFile2, "grammar Test2; a : 'b' ;");
 
         textFile = Files.createFile(tempDir.resolve("notGrammar.txt"));
         Files.writeString(textFile, "just some text");
@@ -49,8 +49,8 @@ class GrammarLoaderServiceTest {
         List<Path> files = service.findGrammarFiles(tempDir.toFile());
 
         assertEquals(2, files.size(), "Should find exactly 2 grammar files");
-        assertTrue(files.contains(grammarFile1), "Should contain test1.g4");
-        assertTrue(files.contains(grammarFile2), "Should contain test2.g4");
+        assertTrue(files.contains(grammarFile1), "Should contain Test1.g4");
+        assertTrue(files.contains(grammarFile2), "Should contain Test2.g4");
     }
 
     @Test
@@ -72,13 +72,32 @@ class GrammarLoaderServiceTest {
     @Test
     void loadGrammarContent_ValidFile_ReturnsContent() throws IOException {
         String content = service.loadGrammarContent(grammarFile1.toFile());
-        assertEquals("grammar Test1;", content, "Content should match what was written");
+        assertEquals("grammar Test1; a : 'b' ;", content, "Content should match what was written");
     }
 
     @Test
     void loadGrammarContent_InvalidFile_ThrowsException() {
         assertThrows(IllegalArgumentException.class, () -> {
             service.loadGrammarContent(new File("nonexistent_file.g4"));
+        }, "Should throw exception for nonexistent file");
+    }
+
+    @Test
+    void loadDynamicGrammar_ValidFile_ReturnsDynamicGrammar() throws Exception {
+        DynamicGrammar grammar = service.loadDynamicGrammar(grammarFile1.toFile());
+
+        assertNotNull(grammar, "Should return a DynamicGrammar instance");
+        assertNotNull(grammar.getParserGrammar(), "Parser grammar should not be null");
+        assertNotNull(grammar.getLexerGrammar(), "Implicit lexer grammar should not be null");
+        assertEquals("Test1", grammar.getParserGrammar().name, "Grammar name should match");
+        assertEquals("Test1Lexer", grammar.getLexerGrammar().name, "Lexer grammar name should match");
+        assertTrue(grammar.getParserGrammar().rules.size() > 0, "Parser should have rules");
+    }
+
+    @Test
+    void loadDynamicGrammar_InvalidFile_ThrowsException() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            service.loadDynamicGrammar(new File("nonexistent_file.g4"));
         }, "Should throw exception for nonexistent file");
     }
 }

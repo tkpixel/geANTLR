@@ -15,9 +15,15 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
 import javafx.fxml.FXMLLoader;
+import java.io.File;
 import java.io.IOException;
 import org.geantlr.viewmodels.MainViewModel;
+import org.geantlr.services.GrammarLoaderService;
+import org.geantlr.services.IGrammarLoaderService;
+import org.geantlr.services.DynamicGrammar;
 import org.kordamp.ikonli.javafx.FontIcon;
+import javafx.stage.FileChooser;
+import javafx.scene.control.Alert;
 
 public class MainViewController {
 
@@ -47,6 +53,7 @@ public class MainViewController {
 
     private MainViewModel viewModel;
     private boolean isDarkMode = true;
+    private IGrammarLoaderService grammarLoaderService;
 
     // Regions for editors
     private Region primaryEditor;
@@ -58,6 +65,7 @@ public class MainViewController {
     @FXML
     public void initialize() {
         viewModel = new MainViewModel();
+        grammarLoaderService = new GrammarLoaderService();
 
         // Use an accent button style if provided by AtlantaFX
         themeToggleBtn.getStyleClass().addAll("accent");
@@ -154,6 +162,41 @@ public class MainViewController {
             viewModel.setActiveEditorsCount(2);
         } else {
             viewModel.setActiveEditorsCount(1);
+        }
+    }
+
+    @FXML
+    private void loadGrammar() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Select ANTLR Grammar File");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("ANTLR Grammar (*.g4)", "*.g4"));
+
+        Stage stage = (Stage) titleBar.getScene().getWindow();
+        File selectedFile = fileChooser.showOpenDialog(stage);
+
+        if (selectedFile != null) {
+            try {
+                DynamicGrammar dynamicGrammar = grammarLoaderService.loadDynamicGrammar(selectedFile);
+                viewModel.setDynamicGrammar(dynamicGrammar);
+
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Grammar Loaded");
+                alert.setHeaderText("Success");
+                String rulesMsg = dynamicGrammar.getParserGrammar() != null
+                    ? "Parser rules: " + dynamicGrammar.getParserGrammar().rules.size()
+                    : "Lexer rules only";
+
+                alert.setContentText("Grammar '" + selectedFile.getName() + "' loaded and compiled successfully.\n" +
+                                     rulesMsg);
+                alert.showAndWait();
+            } catch (Exception e) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Error Loading Grammar");
+                alert.setHeaderText("Failed to load or compile grammar");
+                alert.setContentText(e.getMessage());
+                e.printStackTrace();
+                alert.showAndWait();
+            }
         }
     }
 
