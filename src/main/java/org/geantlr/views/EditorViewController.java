@@ -87,6 +87,27 @@ public class EditorViewController {
 
             editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
 
+            // Initial font size
+            updateEditorStyle(this.viewModel.getFontSize());
+
+            // Listen to font size changes
+            this.viewModel.fontSizeProperty().addListener((obs, oldVal, newVal) -> {
+                updateEditorStyle(newVal.intValue());
+            });
+
+            // Zoom with Ctrl+Scroll
+            editorCodeArea.setOnScroll(event -> {
+                if (event.isControlDown()) {
+                    int currentSize = viewModel.getFontSize();
+                    if (event.getDeltaY() > 0) {
+                        viewModel.setFontSize(currentSize + 1);
+                    } else if (event.getDeltaY() < 0 && currentSize > 8) {
+                        viewModel.setFontSize(currentSize - 1);
+                    }
+                    event.consume();
+                }
+            });
+
             // Listen to caret position
             editorCodeArea.caretPositionProperty().addListener((obs, oldVal, newVal) -> {
                 if (newVal != null) {
@@ -150,5 +171,9 @@ public class EditorViewController {
 
     public EditorViewModel getViewModel() {
         return viewModel;
+    }
+
+    private void updateEditorStyle(int size) {
+        editorCodeArea.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: " + size + "pt;");
     }
 }
