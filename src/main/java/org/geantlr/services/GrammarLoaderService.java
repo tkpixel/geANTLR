@@ -1,5 +1,6 @@
 package org.geantlr.services;
 
+import jakarta.inject.Singleton;
 import org.antlr.v4.Tool;
 import org.antlr.v4.tool.Grammar;
 import org.antlr.v4.tool.LexerGrammar;
@@ -16,6 +17,7 @@ import java.util.stream.Stream;
 /**
  * Implementation of IGrammarLoaderService for finding and loading .g4 files.
  */
+@Singleton
 public class GrammarLoaderService implements IGrammarLoaderService {
 
     @Override
@@ -69,6 +71,7 @@ public class GrammarLoaderService implements IGrammarLoaderService {
         if (parserGrammar.isCombined()) {
             lexerGrammar = parserGrammar.implicitLexer;
             if (lexerGrammar == null) {
+                // Sometime the Tool's loading doesn't expose it directly based on timing, but typically it sets `implicitLexer`
                 throw new IllegalStateException("Combined grammar loaded, but implicit lexer is null.");
             }
         } else if (parserGrammar instanceof LexerGrammar) {
@@ -76,8 +79,35 @@ public class GrammarLoaderService implements IGrammarLoaderService {
             parserGrammar = null; // No parser grammar
         }
 
-        // Processing ATN is handled internally by ANTLR Tool when you ask for createLexerInterpreter or createParserInterpreter
-        // as well as vocabulary and ruleNames properties.
-        return new DynamicGrammar(parserGrammar, lexerGrammar);
+        // Explicitly extract and store the ATN and Vocabulary
+        org.antlr.v4.runtime.atn.ATN atn = null;
+        org.antlr.v4.runtime.Vocabulary vocabulary = null;
+
+        if (parserGrammar != null) {
+            atn = parserGrammar.getATN();
+            vocabulary = parserGrammar.getVocabulary();
+        } else if (lexerGrammar != null) {
+            atn = lexerGrammar.getATN();
+            vocabulary = lexerGrammar.getVocabulary();
+        }
+
+        DynamicGrammar dynamicGrammar = new DynamicGrammar(parserGrammar, lexerGrammar);
+        dynamicGrammar.setAtn(atn);
+        dynamicGrammar.setVocabulary(vocabulary);
+
+        // Programmatically initialize interpreters with empty streams
+        if (lexerGrammar != null) {
+            org.antlr.v4.runtime.CharStream emptyInput = org.antlr.v4.runtime.CharStreams.fromString("");
+            org.antlr.v4.runtime.LexerInterpreter lexerInterpreter = lexerGrammar.createLexerInterpreter(emptyInput);
+            dynamicGrammar.setLexerInterpreter(lexerInterpreter);
+
+            if (parserGrammar != null) {
+                org.antlr.v4.runtime.CommonTokenStream tokenStream = new org.antlr.v4.runtime.CommonTokenStream(lexerInterpreter);
+                org.antlr.v4.runtime.ParserInterpreter parserInterpreter = parserGrammar.createParserInterpreter(tokenStream);
+                dynamicGrammar.setParserInterpreter(parserInterpreter);
+            }
+        }
+
+        return dynamicGrammar;
     }
 }

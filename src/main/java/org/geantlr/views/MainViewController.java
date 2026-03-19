@@ -2,45 +2,39 @@ package org.geantlr.views;
 
 import atlantafx.base.theme.PrimerDark;
 import atlantafx.base.theme.PrimerLight;
+import io.micronaut.context.ApplicationContext;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import javafx.application.Application;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.application.Platform;
 import javafx.scene.control.SplitPane;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.control.Label;
-import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.HeaderBar;
 import javafx.stage.Stage;
 import javafx.fxml.FXMLLoader;
+import javafx.collections.ListChangeListener;
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import org.geantlr.FxmlControllerFactory;
+import org.geantlr.viewmodels.EditorViewModel;
 import org.geantlr.viewmodels.MainViewModel;
-import org.geantlr.services.GrammarLoaderService;
 import org.geantlr.services.IGrammarLoaderService;
 import org.geantlr.services.DynamicGrammar;
 import org.kordamp.ikonli.javafx.FontIcon;
 import javafx.stage.FileChooser;
 import javafx.scene.control.Alert;
 
+@Singleton
 public class MainViewController {
 
     @FXML
-    private HBox titleBar;
-
-    @FXML
-    private Button minimizeBtn;
-
-    @FXML
-    private Button maximizeBtn;
-
-    @FXML
-    private FontIcon maximizeIcon;
-
-    @FXML
-    private Button closeBtn;
+    private HeaderBar headerBar;
 
     @FXML
     private SplitPane editorSplitPane;
@@ -51,41 +45,53 @@ public class MainViewController {
     @FXML
     private FontIcon themeIcon;
 
-    private MainViewModel viewModel;
-    private boolean isDarkMode = true;
-    private IGrammarLoaderService grammarLoaderService;
+    private final MainViewModel viewModel;
+    private final IGrammarLoaderService grammarLoaderService;
+    private final ApplicationContext context;
 
-    // Regions for editors
-    private Region primaryEditor;
-    private Region secondaryEditor;
+    private boolean isDarkMode = false;
 
-    private double xOffset = 0;
-    private double yOffset = 0;
+    // Track instances
+    private final Map<EditorViewModel, Region> editorRegions = new HashMap<>();
+
+    @Inject
+    public MainViewController(MainViewModel viewModel, IGrammarLoaderService grammarLoaderService, ApplicationContext context) {
+        this.viewModel = viewModel;
+        this.grammarLoaderService = grammarLoaderService;
+        this.context = context;
+    }
 
     @FXML
     public void initialize() {
-        viewModel = new MainViewModel();
-        grammarLoaderService = new GrammarLoaderService();
-
         // Use an accent button style if provided by AtlantaFX
         themeToggleBtn.getStyleClass().addAll("accent");
 
-        setupTitleBar();
-
-        // Create editors from FXML
-        primaryEditor = loadEditorView();
-        secondaryEditor = loadEditorView();
-
-        // Set initial state
-        editorSplitPane.getItems().add(primaryEditor);
-
-        // Listen to changes in the active editors count
-        viewModel.activeEditorsCountProperty().addListener((obs, oldVal, newVal) -> {
-            updateEditorsView(newVal.intValue());
+        // Listen to active editors list
+        viewModel.getActiveEditors().addListener((ListChangeListener<EditorViewModel>) change -> {
+            while (change.next()) {
+                if (change.wasAdded()) {
+                    for (EditorViewModel addedViewModel : change.getAddedSubList()) {
+                        Region region = loadEditorView(addedViewModel);
+                        editorRegions.put(addedViewModel, region);
+                        editorSplitPane.getItems().add(region);
+                    }
+                }
+                if (change.wasRemoved()) {
+                    for (EditorViewModel removedViewModel : change.getRemoved()) {
+                        Region region = editorRegions.remove(removedViewModel);
+                        if (region != null) {
+                            editorSplitPane.getItems().remove(region);
+                        }
+                    }
+                }
+            }
+            if (viewModel.getActiveEditors().size() == 2) {
+                Platform.runLater(() -> editorSplitPane.setDividerPositions(0.5));
+            }
         });
 
-        // We will initialize with 1 editor, but if it needs 2, we update
-        updateEditorsView(viewModel.getActiveEditorsCount());
+        // Initialize with 1 editor
+        viewModel.addEditor(context.getBean(EditorViewModel.class));
     }
 
     @FXML
@@ -93,75 +99,19 @@ public class MainViewController {
         isDarkMode = !isDarkMode;
         if (isDarkMode) {
             Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
-            themeIcon.setIconLiteral("mdi2w-white-balance-sunny");
+            themeIcon.setIconLiteral("mdi2m-moon-waning-crescent");
         } else {
             Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
-            themeIcon.setIconLiteral("mdi2m-moon-waning-crescent");
+            themeIcon.setIconLiteral("mdi2w-white-balance-sunny");
         }
-    }
-
-    private void setupTitleBar() {
-        titleBar.setOnMousePressed(event -> {
-            if (event.getButton() == MouseButton.PRIMARY) {
-                // Ignore top 5 pixels to allow vertical resizing without moving the window
-                if (event.getY() > 5) {
-                    xOffset = event.getSceneX();
-                    yOffset = event.getSceneY();
-                } else {
-                    xOffset = -1; // Indicate invalid drag start
-                    yOffset = -1;
-                }
-            }
-        });
-
-        titleBar.setOnMouseDragged(event -> {
-            if (event.getButton() == MouseButton.PRIMARY && yOffset > 5) {
-                Stage stage = (Stage) titleBar.getScene().getWindow();
-                // Prevent dragging if maximized
-                if (!stage.isMaximized()) {
-                    stage.setX(event.getScreenX() - xOffset);
-                    stage.setY(event.getScreenY() - yOffset);
-                }
-            }
-        });
-
-        titleBar.setOnMouseClicked(event -> {
-            if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
-                maximizeWindow();
-            }
-        });
-    }
-
-    @FXML
-    private void minimizeWindow() {
-        Stage stage = (Stage) titleBar.getScene().getWindow();
-        stage.setIconified(true);
-    }
-
-    @FXML
-    private void maximizeWindow() {
-        Stage stage = (Stage) titleBar.getScene().getWindow();
-        if (stage.isMaximized()) {
-            stage.setMaximized(false);
-            maximizeIcon.setIconLiteral("mdi2w-window-maximize");
-        } else {
-            stage.setMaximized(true);
-            maximizeIcon.setIconLiteral("mdi2w-window-restore");
-        }
-    }
-
-    @FXML
-    private void closeWindow() {
-        Stage stage = (Stage) titleBar.getScene().getWindow();
-        stage.fireEvent(new javafx.stage.WindowEvent(stage, javafx.stage.WindowEvent.WINDOW_CLOSE_REQUEST));
     }
 
     @FXML
     private void toggleEditors() {
-        if (viewModel.getActiveEditorsCount() == 1) {
-            viewModel.setActiveEditorsCount(2);
-        } else {
-            viewModel.setActiveEditorsCount(1);
+        if (viewModel.getActiveEditors().size() == 1) {
+            viewModel.addEditor(context.getBean(EditorViewModel.class));
+        } else if (viewModel.getActiveEditors().size() == 2) {
+            viewModel.removeEditor(viewModel.getActiveEditors().get(1));
         }
     }
 
@@ -171,7 +121,7 @@ public class MainViewController {
         fileChooser.setTitle("Select ANTLR Grammar File");
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("ANTLR Grammar (*.g4)", "*.g4"));
 
-        Stage stage = (Stage) titleBar.getScene().getWindow();
+        Stage stage = (Stage) editorSplitPane.getScene().getWindow();
         File selectedFile = fileChooser.showOpenDialog(stage);
 
         if (selectedFile != null) {
@@ -200,38 +150,19 @@ public class MainViewController {
         }
     }
 
-    private Region loadEditorView() {
+    private Region loadEditorView(EditorViewModel editorViewModel) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/geantlr/views/EditorView.fxml"));
-            return loader.load();
+            loader.setControllerFactory(context.getBean(FxmlControllerFactory.class));
+            Region region = loader.load();
+            EditorViewController controller = loader.getController();
+            controller.setViewModel(editorViewModel);
+            return region;
         } catch (IOException e) {
             e.printStackTrace();
-            // Fallback to placeholder if FXML fails to load
             StackPane pane = new StackPane(new Label("Error loading editor"));
             pane.setStyle("-fx-border-color: red; -fx-background-color: -color-bg-default;");
             return pane;
-        }
-    }
-
-    private void updateEditorsView(int count) {
-        if (count == 1) {
-            if (editorSplitPane.getItems().contains(secondaryEditor)) {
-                editorSplitPane.getItems().remove(secondaryEditor);
-            }
-            if (!editorSplitPane.getItems().contains(primaryEditor)) {
-                editorSplitPane.getItems().add(0, primaryEditor);
-            }
-        } else if (count == 2) {
-            if (!editorSplitPane.getItems().contains(primaryEditor)) {
-                editorSplitPane.getItems().add(0, primaryEditor);
-            }
-            if (!editorSplitPane.getItems().contains(secondaryEditor)) {
-                editorSplitPane.getItems().add(secondaryEditor);
-                // After adding the second editor, set the divider position
-                javafx.application.Platform.runLater(() -> {
-                    editorSplitPane.setDividerPositions(0.5);
-                });
-            }
         }
     }
 }

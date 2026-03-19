@@ -10,9 +10,15 @@ module org.geantlr {
     requires org.antlr.antlr4.runtime;
     requires antlr4;
 
+    requires io.micronaut.inject;
+    requires jakarta.inject;
+    requires io.micronaut.core;
+    requires io.micronaut.context;
+
     opens org.geantlr to javafx.fxml;
     opens org.geantlr.views to javafx.fxml;
     exports org.geantlr;
     exports org.geantlr.views;
+    exports org.geantlr.viewmodels;
     exports org.geantlr.services;
 }

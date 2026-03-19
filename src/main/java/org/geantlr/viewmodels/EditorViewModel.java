@@ -1,8 +1,10 @@
 package org.geantlr.viewmodels;
 
+import io.micronaut.context.annotation.Prototype;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
+@Prototype
 public class EditorViewModel {
 
     private final StringProperty textContent = new SimpleStringProperty("");
