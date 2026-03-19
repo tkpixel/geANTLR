@@ -19,5 +19,6 @@ module org.geantlr {
     opens org.geantlr.views to javafx.fxml;
     exports org.geantlr;
     exports org.geantlr.views;
+    exports org.geantlr.viewmodels;
     exports org.geantlr.services;
 }
