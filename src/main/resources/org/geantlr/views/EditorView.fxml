@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.TextArea?>
+<?import jfx.incubator.scene.control.richtext.CodeArea?>
 <?import javafx.scene.layout.StackPane?>
 
 <StackPane xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1"
            fx:controller="org.geantlr.views.EditorViewController"
            style="-fx-border-color: gray; -fx-background-color: -color-bg-default;">
 
-    <TextArea fx:id="editorTextArea" promptText="Enter text here..." wrapText="true"/>
+    <CodeArea fx:id="editorCodeArea" wrapText="true"/>
 
 </StackPane>
