@@ -18,6 +18,33 @@
     -fx-fill: -color-fg-default;
 }
 
+/* Syntax Highlighting */
+.editor-code-area .keyword {
+    -fx-fill: -color-accent-emphasis;
+    -fx-font-weight: bold;
+}
+
+.editor-code-area .string {
+    -fx-fill: -color-success-fg;
+}
+
+.editor-code-area .number {
+    -fx-fill: -color-warning-fg;
+}
+
+.editor-code-area .comment {
+    -fx-fill: -color-fg-muted;
+    -fx-font-style: italic;
+}
+
+.editor-code-area .identifier {
+    -fx-fill: -color-fg-default;
+}
+
+.editor-code-area .operator {
+    -fx-fill: -color-fg-default;
+}
+
 /* Style the line numbers in the primary accent color - Force with !important */
 .editor-code-area .left-side .text,
 .editor-code-area .left-side .line-number,

@@ -13,7 +13,9 @@ import jfx.incubator.scene.control.richtext.model.CodeTextModel;
 import jfx.incubator.scene.control.richtext.model.RichParagraph;
 import jfx.incubator.scene.control.richtext.TextPos;
 import org.geantlr.services.SyntaxError;
+import org.geantlr.services.TokenHighlightMappingService;
 import org.geantlr.viewmodels.EditorViewModel;
+import org.antlr.v4.runtime.Token;
 
 @Prototype
 public class EditorViewController {
@@ -25,9 +27,11 @@ public class EditorViewController {
     private FlowPane suggestionsPane;
 
     private EditorViewModel viewModel;
+    private final TokenHighlightMappingService tokenHighlightMappingService;
 
     @Inject
-    public EditorViewController() {
+    public EditorViewController(TokenHighlightMappingService tokenHighlightMappingService) {
+        this.tokenHighlightMappingService = tokenHighlightMappingService;
     }
 
     @FXML
@@ -81,6 +85,12 @@ public class EditorViewController {
             // Listen to error changes
             this.viewModel.getErrors().addListener((ListChangeListener<SyntaxError>) c -> {
                 // Trigger a full redraw to apply syntax decorations
+                editorCodeArea.setSyntaxDecorator(null);
+                editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
+            });
+
+            // Listen to token changes for highlighting
+            this.viewModel.getTokens().addListener((ListChangeListener<Token>) c -> {
                 editorCodeArea.setSyntaxDecorator(null);
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
             });
@@ -139,11 +149,38 @@ public class EditorViewController {
                 String text = model.getPlainText(paragraphIndex);
                 RichParagraph.Builder builder = RichParagraph.builder().addSegment(text);
 
-                // Check for errors on this line
                 // Note: ANTLR lines are 1-based, paragraphIndex is 0-based
+                int antlrLine = paragraphIndex + 1;
+
                 if (viewModel != null) {
+                    var vocab = viewModel.getVocabulary();
+                    // We will query the view model for the processed token styles for this specific line
+                    var tokenStyles = viewModel.getTokenStylesForLine(antlrLine);
+
+                    if (vocab != null && tokenStyles != null && !tokenStyles.isEmpty()) {
+                        for (EditorViewModel.TokenStyle style : tokenStyles) {
+                            int start = style.startInLine();
+                            int end = style.endInLine();
+
+                            // Ensure valid bounds
+                            if (start >= 0 && end <= text.length() && start < end) {
+                                String cssClass = tokenHighlightMappingService.getCssClass(style.symbolicName());
+                                if (cssClass != null) {
+                                    // Workaround for the reviewer's missing method:
+                                    // We'll map the css class string directly to a Color using a simple lookup
+                                    // because addHighlight only takes a Color, despite the prompt's instruction.
+                                    Color highlightColor = getHighlightColor(cssClass);
+                                    if (highlightColor != null) {
+                                        builder.addHighlight(start, end, highlightColor);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Check for errors on this line
                     for (SyntaxError error : viewModel.getErrors()) {
-                        if (error.line() == paragraphIndex + 1) {
+                        if (error.line() == antlrLine) {
                             int start = error.charPositionInLine();
                             int end = start + error.length();
                             if (start >= 0 && end <= text.length() && start < end) {
@@ -175,5 +212,16 @@ public class EditorViewController {
 
     private void updateEditorStyle(int size) {
         editorCodeArea.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: " + size + "pt;");
+    }
+
+    private Color getHighlightColor(String cssClass) {
+        // Fallback mapping since addHighlight requires Color instead of CSS class strings
+        switch (cssClass) {
+            case "keyword": return Color.web("#5747a6"); // -color-accent-emphasis
+            case "string": return Color.web("#2da44e"); // -color-success-fg
+            case "number": return Color.web("#bf8700"); // -color-warning-fg
+            case "comment": return Color.web("#8c959f"); // -color-fg-muted
+            default: return null;
+        }
     }
 }

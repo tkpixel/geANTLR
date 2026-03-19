@@ -7,15 +7,17 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.LexerInterpreter;
 import org.antlr.v4.runtime.ParserInterpreter;
 
+import org.antlr.v4.runtime.Token;
+
 import java.util.Collections;
 import java.util.List;
 
 @Singleton
 public class AntlrGrammarService {
 
-    public List<SyntaxError> parseText(DynamicGrammar dynamicGrammar, String text) {
+    public ParseResult parseText(DynamicGrammar dynamicGrammar, String text) {
         if (dynamicGrammar == null || text == null || text.isEmpty()) {
-            return Collections.emptyList();
+            return new ParseResult(Collections.emptyList(), Collections.emptyList());
         }
 
         CustomErrorListener errorListener = new CustomErrorListener();
@@ -47,6 +49,9 @@ public class AntlrGrammarService {
             tokenStream.fill();
         }
 
-        return errorListener.getErrors();
+        tokenStream.fill(); // Ensure we have all tokens
+        List<Token> tokens = tokenStream.getTokens();
+
+        return new ParseResult(tokens, errorListener.getErrors());
     }
 }
