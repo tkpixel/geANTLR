@@ -1,0 +1,9 @@
+.root {
+    /* Set the requested primary background color */
+    -color-bg-default: #16161a;
+    -color-bg-subtle: #16161a;
+
+    /* Set the requested secondary color */
+    -color-accent-emphasis: #5747a6;
+    -color-accent-fg: #5747a6;
+}
