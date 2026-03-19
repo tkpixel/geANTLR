@@ -5,16 +5,36 @@ import atlantafx.base.theme.PrimerLight;
 import javafx.application.Application;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.application.Platform;
 import javafx.scene.control.SplitPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.control.Label;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
+import javafx.stage.Stage;
 import javafx.fxml.FXMLLoader;
 import java.io.IOException;
 import org.geantlr.viewmodels.MainViewModel;
 import org.kordamp.ikonli.javafx.FontIcon;
 
 public class MainViewController {
+
+    @FXML
+    private HBox titleBar;
+
+    @FXML
+    private Button minimizeBtn;
+
+    @FXML
+    private Button maximizeBtn;
+
+    @FXML
+    private FontIcon maximizeIcon;
+
+    @FXML
+    private Button closeBtn;
 
     @FXML
     private SplitPane editorSplitPane;
@@ -32,12 +52,17 @@ public class MainViewController {
     private Region primaryEditor;
     private Region secondaryEditor;
 
+    private double xOffset = 0;
+    private double yOffset = 0;
+
     @FXML
     public void initialize() {
         viewModel = new MainViewModel();
 
         // Use an accent button style if provided by AtlantaFX
         themeToggleBtn.getStyleClass().addAll("accent");
+
+        setupTitleBar();
 
         // Create editors from FXML
         primaryEditor = loadEditorView();
@@ -65,6 +90,62 @@ public class MainViewController {
             Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
             themeIcon.setIconLiteral("mdi2m-moon-waning-crescent");
         }
+    }
+
+    private void setupTitleBar() {
+        titleBar.setOnMousePressed(event -> {
+            if (event.getButton() == MouseButton.PRIMARY) {
+                // Ignore top 5 pixels to allow vertical resizing without moving the window
+                if (event.getY() > 5) {
+                    xOffset = event.getSceneX();
+                    yOffset = event.getSceneY();
+                } else {
+                    xOffset = -1; // Indicate invalid drag start
+                    yOffset = -1;
+                }
+            }
+        });
+
+        titleBar.setOnMouseDragged(event -> {
+            if (event.getButton() == MouseButton.PRIMARY && yOffset > 5) {
+                Stage stage = (Stage) titleBar.getScene().getWindow();
+                // Prevent dragging if maximized
+                if (!stage.isMaximized()) {
+                    stage.setX(event.getScreenX() - xOffset);
+                    stage.setY(event.getScreenY() - yOffset);
+                }
+            }
+        });
+
+        titleBar.setOnMouseClicked(event -> {
+            if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
+                maximizeWindow();
+            }
+        });
+    }
+
+    @FXML
+    private void minimizeWindow() {
+        Stage stage = (Stage) titleBar.getScene().getWindow();
+        stage.setIconified(true);
+    }
+
+    @FXML
+    private void maximizeWindow() {
+        Stage stage = (Stage) titleBar.getScene().getWindow();
+        if (stage.isMaximized()) {
+            stage.setMaximized(false);
+            maximizeIcon.setIconLiteral("mdi2w-window-maximize");
+        } else {
+            stage.setMaximized(true);
+            maximizeIcon.setIconLiteral("mdi2w-window-restore");
+        }
+    }
+
+    @FXML
+    private void closeWindow() {
+        Stage stage = (Stage) titleBar.getScene().getWindow();
+        stage.fireEvent(new javafx.stage.WindowEvent(stage, javafx.stage.WindowEvent.WINDOW_CLOSE_REQUEST));
     }
 
     @FXML
