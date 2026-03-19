@@ -36,6 +36,7 @@ public class EditorViewModel {
     private final ObjectProperty<InsertTextCommand> insertTextCommand = new SimpleObjectProperty<>();
 
     private boolean isUpdating = false;
+    private int currentCaretPosition = 0;
 
     private final AntlrGrammarService antlrGrammarService;
     private final CodeCompletionService codeCompletionService;
@@ -53,6 +54,7 @@ public class EditorViewModel {
 
         textContent.addListener((obs, oldVal, newVal) -> {
             debounce.playFromStart();
+            updateSuggestions();
         });
     }
 
@@ -181,13 +183,19 @@ public class EditorViewModel {
     }
 
     public void onCaretPositionChanged(int caretPosition) {
+        this.currentCaretPosition = caretPosition;
+        updateSuggestions();
+    }
+
+    private void updateSuggestions() {
         var grammar = mainViewModel.getDynamicGrammar();
         if (grammar == null) {
             Platform.runLater(suggestedTokens::clear);
             return;
         }
         String text = textContent.get();
-        List<String> suggestions = codeCompletionService.getSuggestedTokens(grammar, text, caretPosition);
-        Platform.runLater(() -> suggestedTokens.setAll(suggestions));
+        int caretPosition = this.currentCaretPosition;
+        CompletableFuture.supplyAsync(() -> codeCompletionService.getSuggestedTokens(grammar, text, caretPosition))
+            .thenAccept(suggestions -> Platform.runLater(() -> suggestedTokens.setAll(suggestions)));
     }
 }
