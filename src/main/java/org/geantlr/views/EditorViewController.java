@@ -1,13 +1,13 @@
 package org.geantlr.views;
 
 import javafx.fxml.FXML;
-import javafx.scene.control.TextArea;
+import jfx.incubator.scene.control.richtext.CodeArea;
 import org.geantlr.viewmodels.EditorViewModel;
 
 public class EditorViewController {
 
     @FXML
-    private TextArea editorTextArea;
+    private CodeArea editorCodeArea;
 
     private EditorViewModel viewModel;
 
@@ -15,9 +15,21 @@ public class EditorViewController {
     public void initialize() {
         viewModel = new EditorViewModel();
 
-        // Bind the text area text property to the view model's text content property bidirectionally
-        if (editorTextArea != null) {
-            editorTextArea.textProperty().bindBidirectional(viewModel.textContentProperty());
+        // Update view model when CodeArea text changes
+        if (editorCodeArea != null) {
+            editorCodeArea.getModel().addListener(change -> {
+                viewModel.setTextContent(editorCodeArea.getText());
+            });
+
+            // Set initial text
+            editorCodeArea.setText(viewModel.getTextContent());
+
+            // Listen to view model changes
+            viewModel.textContentProperty().addListener((obs, oldVal, newVal) -> {
+                if (!newVal.equals(editorCodeArea.getText())) {
+                    editorCodeArea.setText(newVal);
+                }
+            });
         }
     }
 
