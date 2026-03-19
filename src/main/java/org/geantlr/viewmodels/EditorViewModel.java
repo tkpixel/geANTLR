@@ -2,6 +2,8 @@ package org.geantlr.viewmodels;
 
 import io.micronaut.context.annotation.Prototype;
 import jakarta.inject.Inject;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
@@ -21,6 +23,10 @@ public class EditorViewModel {
     private final StringProperty textContent = new SimpleStringProperty("");
     private final ObservableList<SyntaxError> errors = FXCollections.observableArrayList();
     private final ObservableList<String> suggestedTokens = FXCollections.observableArrayList();
+
+    public record InsertTextCommand(String text) {}
+
+    private final ObjectProperty<InsertTextCommand> insertTextCommand = new SimpleObjectProperty<>();
 
     private final AntlrGrammarService antlrGrammarService;
     private final CodeCompletionService codeCompletionService;
@@ -74,6 +80,21 @@ public class EditorViewModel {
 
     public ObservableList<String> getSuggestedTokens() {
         return suggestedTokens;
+    }
+
+    public ObjectProperty<InsertTextCommand> insertTextCommandProperty() {
+        return insertTextCommand;
+    }
+
+    public void insertBaustein(String token) {
+        String cleanToken = token.startsWith("'") && token.endsWith("'")
+                ? token.substring(1, token.length() - 1)
+                : token;
+        insertTextCommand.set(new InsertTextCommand(cleanToken));
+    }
+
+    public void clearInsertTextCommand() {
+        insertTextCommand.set(null);
     }
 
     public void onCaretPositionChanged(int caretPosition) {
