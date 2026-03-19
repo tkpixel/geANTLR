@@ -15,7 +15,11 @@
 
     <top>
         <VBox>
-            <HeaderBar fx:id="headerBar" title="GeantLR Editor Demo" />
+            <HeaderBar fx:id="headerBar">
+                <center>
+                    <Label text="GeantLR Editor Demo" />
+                </center>
+            </HeaderBar>
             <ToolBar>
                 <Button fx:id="themeToggleBtn" text="Toggle Theme" onAction="#toggleTheme">
                     <graphic>
