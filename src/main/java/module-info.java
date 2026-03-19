@@ -9,5 +9,7 @@ module org.geantlr {
     requires org.kordamp.ikonli.materialdesign2;
 
     opens org.geantlr to javafx.fxml;
+    opens org.geantlr.views to javafx.fxml;
     exports org.geantlr;
+    exports org.geantlr.views;
 }

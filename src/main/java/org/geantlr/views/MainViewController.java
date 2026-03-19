@@ -9,6 +9,8 @@ import javafx.scene.control.SplitPane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.control.Label;
+import javafx.fxml.FXMLLoader;
+import java.io.IOException;
 import org.geantlr.viewmodels.MainViewModel;
 import org.kordamp.ikonli.javafx.FontIcon;
 
@@ -26,7 +28,7 @@ public class MainViewController {
     private MainViewModel viewModel;
     private boolean isDarkMode = true;
 
-    // Placeholder regions for editors
+    // Regions for editors
     private Region primaryEditor;
     private Region secondaryEditor;
 
@@ -37,9 +39,9 @@ public class MainViewController {
         // Use an accent button style if provided by AtlantaFX
         themeToggleBtn.getStyleClass().addAll("accent");
 
-        // Create placeholder editors for now
-        primaryEditor = createPlaceholderEditor("Editor 1");
-        secondaryEditor = createPlaceholderEditor("Editor 2");
+        // Create editors from FXML
+        primaryEditor = loadEditorView();
+        secondaryEditor = loadEditorView();
 
         // Set initial state
         editorSplitPane.getItems().add(primaryEditor);
@@ -74,10 +76,17 @@ public class MainViewController {
         }
     }
 
-    private Region createPlaceholderEditor(String text) {
-        StackPane pane = new StackPane(new Label(text));
-        pane.setStyle("-fx-border-color: gray; -fx-background-color: -color-bg-default;");
-        return pane;
+    private Region loadEditorView() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/geantlr/views/EditorView.fxml"));
+            return loader.load();
+        } catch (IOException e) {
+            e.printStackTrace();
+            // Fallback to placeholder if FXML fails to load
+            StackPane pane = new StackPane(new Label("Error loading editor"));
+            pane.setStyle("-fx-border-color: red; -fx-background-color: -color-bg-default;");
+            return pane;
+        }
     }
 
     private void updateEditorsView(int count) {
