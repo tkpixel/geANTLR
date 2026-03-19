@@ -7,6 +7,7 @@ import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import org.geantlr.services.AntlrGrammarService;
+import org.geantlr.services.CodeCompletionService;
 import org.geantlr.services.SyntaxError;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
@@ -19,15 +20,18 @@ public class EditorViewModel {
 
     private final StringProperty textContent = new SimpleStringProperty("");
     private final ObservableList<SyntaxError> errors = FXCollections.observableArrayList();
+    private final ObservableList<String> suggestedTokens = FXCollections.observableArrayList();
 
     private final AntlrGrammarService antlrGrammarService;
+    private final CodeCompletionService codeCompletionService;
     private final MainViewModel mainViewModel;
 
     private final PauseTransition debounce = new PauseTransition(Duration.millis(300));
 
     @Inject
-    public EditorViewModel(AntlrGrammarService antlrGrammarService, MainViewModel mainViewModel) {
+    public EditorViewModel(AntlrGrammarService antlrGrammarService, CodeCompletionService codeCompletionService, MainViewModel mainViewModel) {
         this.antlrGrammarService = antlrGrammarService;
+        this.codeCompletionService = codeCompletionService;
         this.mainViewModel = mainViewModel;
 
         debounce.setOnFinished(event -> parseText(textContent.get()));
@@ -66,5 +70,20 @@ public class EditorViewModel {
 
     public void setTextContent(String text) {
         this.textContent.set(text);
+    }
+
+    public ObservableList<String> getSuggestedTokens() {
+        return suggestedTokens;
+    }
+
+    public void onCaretPositionChanged(int caretPosition) {
+        var grammar = mainViewModel.getDynamicGrammar();
+        if (grammar == null) {
+            Platform.runLater(suggestedTokens::clear);
+            return;
+        }
+        String text = textContent.get();
+        List<String> suggestions = codeCompletionService.getSuggestedTokens(grammar, text, caretPosition);
+        Platform.runLater(() -> suggestedTokens.setAll(suggestions));
     }
 }

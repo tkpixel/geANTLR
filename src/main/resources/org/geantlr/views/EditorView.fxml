@@ -1,12 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import jfx.incubator.scene.control.richtext.CodeArea?>
-<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.geometry.Insets?>
 
-<StackPane xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1"
+<BorderPane xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1"
            fx:controller="org.geantlr.views.EditorViewController"
            style="-fx-border-color: gray; -fx-background-color: -color-bg-default;">
 
-    <CodeArea fx:id="editorCodeArea" wrapText="true"/>
+    <center>
+        <CodeArea fx:id="editorCodeArea" wrapText="true"/>
+    </center>
 
-</StackPane>
+    <bottom>
+        <FlowPane fx:id="suggestionsPane" hgap="5" vgap="5" style="-fx-background-color: -color-bg-subtle; -fx-border-color: -color-border-default; -fx-border-width: 1 0 0 0;">
+            <padding>
+                <Insets top="5" right="5" bottom="5" left="5"/>
+            </padding>
+        </FlowPane>
+    </bottom>
+
+</BorderPane>

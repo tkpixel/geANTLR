@@ -5,6 +5,8 @@ import jakarta.inject.Inject;
 import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
 import javafx.scene.paint.Color;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.control.Button;
 import jfx.incubator.scene.control.richtext.CodeArea;
 import jfx.incubator.scene.control.richtext.SyntaxDecorator;
 import jfx.incubator.scene.control.richtext.model.CodeTextModel;
@@ -18,6 +20,9 @@ public class EditorViewController {
 
     @FXML
     private CodeArea editorCodeArea;
+
+    @FXML
+    private FlowPane suggestionsPane;
 
     private EditorViewModel viewModel;
 
@@ -60,6 +65,33 @@ public class EditorViewController {
             });
 
             editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
+
+            // Listen to caret position
+            editorCodeArea.caretPositionProperty().addListener((obs, oldVal, newVal) -> {
+                if (newVal != null) {
+                    int caretIndex = newVal.offset();
+                    viewModel.onCaretPositionChanged(caretIndex);
+                }
+            });
+
+            // Listen to token suggestions
+            this.viewModel.getSuggestedTokens().addListener((ListChangeListener<String>) c -> {
+                suggestionsPane.getChildren().clear();
+                for (String token : this.viewModel.getSuggestedTokens()) {
+                    Button btn = new Button(token);
+                    btn.getStyleClass().addAll("pill-button");
+                    // On click, append text (simple demo action)
+                    btn.setOnAction(e -> {
+                        String cleanToken = token.startsWith("'") && token.endsWith("'")
+                                ? token.substring(1, token.length() - 1)
+                                : token;
+                        // Insert at caret position logic can be improved later
+                        editorCodeArea.insertText(editorCodeArea.getCaretPosition(), cleanToken + " ", null);
+                        editorCodeArea.requestFocus();
+                    });
+                    suggestionsPane.getChildren().add(btn);
+                }
+            });
         }
     }
 
