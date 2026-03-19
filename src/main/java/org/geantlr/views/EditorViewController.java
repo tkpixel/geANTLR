@@ -57,6 +57,16 @@ public class EditorViewController {
                 }
             });
 
+            // Listen to insert text command
+            this.viewModel.insertTextCommandProperty().addListener((obs, oldVal, newVal) -> {
+                if (newVal != null) {
+                    editorCodeArea.insertText(editorCodeArea.getCaretPosition(), newVal.text() + " ", null);
+                    editorCodeArea.requestFocus();
+                    // Clear the command in ViewModel to allow repeated commands
+                    this.viewModel.clearInsertTextCommand();
+                }
+            });
+
             // Listen to error changes
             this.viewModel.getErrors().addListener((ListChangeListener<SyntaxError>) c -> {
                 // Trigger a full redraw to apply syntax decorations
@@ -80,14 +90,9 @@ public class EditorViewController {
                 for (String token : this.viewModel.getSuggestedTokens()) {
                     Button btn = new Button(token);
                     btn.getStyleClass().addAll("pill-button");
-                    // On click, append text (simple demo action)
+                    // On click, append text via the view model mediator
                     btn.setOnAction(e -> {
-                        String cleanToken = token.startsWith("'") && token.endsWith("'")
-                                ? token.substring(1, token.length() - 1)
-                                : token;
-                        // Insert at caret position logic can be improved later
-                        editorCodeArea.insertText(editorCodeArea.getCaretPosition(), cleanToken + " ", null);
-                        editorCodeArea.requestFocus();
+                        viewModel.insertBaustein(token);
                     });
                     suggestionsPane.getChildren().add(btn);
                 }
