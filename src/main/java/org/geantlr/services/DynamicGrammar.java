@@ -1,0 +1,50 @@
+package org.geantlr.services;
+
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.LexerInterpreter;
+import org.antlr.v4.runtime.ParserInterpreter;
+import org.antlr.v4.runtime.TokenStream;
+import org.antlr.v4.tool.Grammar;
+import org.antlr.v4.tool.LexerGrammar;
+
+/**
+ * Encapsulates the runtime interpreter models of an ANTLR 4 grammar loaded dynamically.
+ */
+public class DynamicGrammar {
+
+    private final Grammar parserGrammar;
+    private final LexerGrammar lexerGrammar;
+
+    public DynamicGrammar(Grammar parserGrammar, LexerGrammar lexerGrammar) {
+        this.parserGrammar = parserGrammar;
+        this.lexerGrammar = lexerGrammar;
+    }
+
+    /**
+     * Creates a new instance of a LexerInterpreter based on the implicitly generated Lexer grammar.
+     *
+     * @param input The character stream to tokenize.
+     * @return A LexerInterpreter configured for this grammar.
+     */
+    public LexerInterpreter createLexerInterpreter(CharStream input) {
+        return lexerGrammar.createLexerInterpreter(input);
+    }
+
+    /**
+     * Creates a new instance of a ParserInterpreter based on the loaded parser grammar.
+     *
+     * @param input The token stream to parse.
+     * @return A ParserInterpreter configured for this grammar.
+     */
+    public ParserInterpreter createParserInterpreter(TokenStream input) {
+        return parserGrammar.createParserInterpreter(input);
+    }
+
+    public Grammar getParserGrammar() {
+        return parserGrammar;
+    }
+
+    public LexerGrammar getLexerGrammar() {
+        return lexerGrammar;
+    }
+}
