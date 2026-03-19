@@ -28,6 +28,8 @@ public class EditorViewModel {
 
     private final ObjectProperty<InsertTextCommand> insertTextCommand = new SimpleObjectProperty<>();
 
+    private boolean isUpdating = false;
+
     private final AntlrGrammarService antlrGrammarService;
     private final CodeCompletionService codeCompletionService;
     private final MainViewModel mainViewModel;
@@ -86,10 +88,19 @@ public class EditorViewModel {
         return insertTextCommand;
     }
 
+    public boolean isUpdating() {
+        return isUpdating;
+    }
+
+    public void setUpdating(boolean updating) {
+        isUpdating = updating;
+    }
+
     public void insertBaustein(String token) {
         String cleanToken = token.startsWith("'") && token.endsWith("'")
                 ? token.substring(1, token.length() - 1)
                 : token;
+        setUpdating(true);
         insertTextCommand.set(new InsertTextCommand(cleanToken));
     }
 

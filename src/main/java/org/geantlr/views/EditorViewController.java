@@ -44,7 +44,9 @@ public class EditorViewController {
 
             // Update view model when CodeArea text changes
             editorCodeArea.getModel().addListener(change -> {
-                this.viewModel.setTextContent(editorCodeArea.getText());
+                if (!this.viewModel.isUpdating()) {
+                    this.viewModel.setTextContent(editorCodeArea.getText());
+                }
             });
 
             // Set initial text
@@ -60,10 +62,19 @@ public class EditorViewController {
             // Listen to insert text command
             this.viewModel.insertTextCommandProperty().addListener((obs, oldVal, newVal) -> {
                 if (newVal != null) {
-                    editorCodeArea.insertText(editorCodeArea.getCaretPosition(), newVal.text() + " ", null);
-                    editorCodeArea.requestFocus();
-                    // Clear the command in ViewModel to allow repeated commands
-                    this.viewModel.clearInsertTextCommand();
+                    try {
+                        TextPos currentPos = editorCodeArea.getCaretPosition();
+                        editorCodeArea.insertText(currentPos, newVal.text() + " ", null);
+
+                        int newOffset = currentPos.offset() + newVal.text().length() + 1;
+                        editorCodeArea.select(TextPos.ofLeading(newOffset, newOffset));
+
+                        editorCodeArea.requestFocus();
+                    } finally {
+                        // Clear the command in ViewModel to allow repeated commands
+                        this.viewModel.clearInsertTextCommand();
+                        this.viewModel.setUpdating(false);
+                    }
                 }
             });
 
