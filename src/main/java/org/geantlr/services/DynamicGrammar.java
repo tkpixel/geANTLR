@@ -15,6 +15,12 @@ public class DynamicGrammar {
     private final Grammar parserGrammar;
     private final LexerGrammar lexerGrammar;
 
+    private LexerInterpreter lexerInterpreter;
+    private ParserInterpreter parserInterpreter;
+
+    private org.antlr.v4.runtime.atn.ATN atn;
+    private org.antlr.v4.runtime.Vocabulary vocabulary;
+
     public DynamicGrammar(Grammar parserGrammar, LexerGrammar lexerGrammar) {
         this.parserGrammar = parserGrammar;
         this.lexerGrammar = lexerGrammar;
@@ -46,5 +52,37 @@ public class DynamicGrammar {
 
     public LexerGrammar getLexerGrammar() {
         return lexerGrammar;
+    }
+
+    public LexerInterpreter getLexerInterpreter() {
+        return lexerInterpreter;
+    }
+
+    public void setLexerInterpreter(LexerInterpreter lexerInterpreter) {
+        this.lexerInterpreter = lexerInterpreter;
+    }
+
+    public ParserInterpreter getParserInterpreter() {
+        return parserInterpreter;
+    }
+
+    public void setParserInterpreter(ParserInterpreter parserInterpreter) {
+        this.parserInterpreter = parserInterpreter;
+    }
+
+    public org.antlr.v4.runtime.atn.ATN getAtn() {
+        return atn;
+    }
+
+    public void setAtn(org.antlr.v4.runtime.atn.ATN atn) {
+        this.atn = atn;
+    }
+
+    public org.antlr.v4.runtime.Vocabulary getVocabulary() {
+        return vocabulary;
+    }
+
+    public void setVocabulary(org.antlr.v4.runtime.Vocabulary vocabulary) {
+        this.vocabulary = vocabulary;
     }
 }

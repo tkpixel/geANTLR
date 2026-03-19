@@ -4,56 +4,42 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.ToolBar?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HeaderBar?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<VBox xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="org.geantlr.views.MainViewController"
-      styleClass="background">
+<BorderPane xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.geantlr.views.MainViewController"
+            styleClass="background">
 
-    <!-- Custom Title Bar -->
-    <HBox fx:id="titleBar" styleClass="title-bar" alignment="CENTER_LEFT" spacing="10">
-        <Label text="GeantLR Editor Demo" styleClass="title-label" />
-        <Region HBox.hgrow="ALWAYS" />
-        <Button fx:id="minimizeBtn" styleClass="window-btn, minimize-btn" onAction="#minimizeWindow">
-            <graphic>
-                <FontIcon iconLiteral="mdi2w-window-minimize" iconSize="16"/>
-            </graphic>
-        </Button>
-        <Button fx:id="maximizeBtn" styleClass="window-btn, maximize-btn" onAction="#maximizeWindow">
-            <graphic>
-                <FontIcon fx:id="maximizeIcon" iconLiteral="mdi2w-window-maximize" iconSize="16"/>
-            </graphic>
-        </Button>
-        <Button fx:id="closeBtn" styleClass="window-btn, close-btn" onAction="#closeWindow">
-            <graphic>
-                <FontIcon iconLiteral="mdi2w-window-close" iconSize="16"/>
-            </graphic>
-        </Button>
-    </HBox>
+    <top>
+        <VBox>
+            <HeaderBar fx:id="headerBar" title="GeantLR Editor Demo" />
+            <ToolBar>
+                <Button fx:id="themeToggleBtn" text="Toggle Theme" onAction="#toggleTheme">
+                    <graphic>
+                        <FontIcon fx:id="themeIcon" iconLiteral="mdi2m-moon-waning-crescent" iconSize="20"/>
+                    </graphic>
+                </Button>
+                <Button text="Toggle Editors" onAction="#toggleEditors">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2p-page-layout-body" iconSize="20"/>
+                    </graphic>
+                </Button>
+                <Button text="Load Grammar" onAction="#loadGrammar">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2f-file-code-outline" iconSize="20"/>
+                    </graphic>
+                </Button>
+            </ToolBar>
+        </VBox>
+    </top>
 
-    <ToolBar>
-        <Button fx:id="themeToggleBtn" text="Toggle Theme" onAction="#toggleTheme">
-            <graphic>
-                <FontIcon fx:id="themeIcon" iconLiteral="mdi2w-white-balance-sunny" iconSize="20"/>
-            </graphic>
-        </Button>
-        <Button text="Toggle Editors" onAction="#toggleEditors">
-            <graphic>
-                <FontIcon iconLiteral="mdi2p-page-layout-body" iconSize="20"/>
-            </graphic>
-        </Button>
-        <Button text="Load Grammar" onAction="#loadGrammar">
-            <graphic>
-                <FontIcon iconLiteral="mdi2f-file-code-outline" iconSize="20"/>
-            </graphic>
-        </Button>
-    </ToolBar>
+    <center>
+        <SplitPane fx:id="editorSplitPane" dividerPositions="0.5">
+            <!-- Editors will be dynamically added here by the controller -->
+        </SplitPane>
+    </center>
 
-    <SplitPane fx:id="editorSplitPane" VBox.vgrow="ALWAYS" dividerPositions="0.5">
-        <!-- Editors will be dynamically added here by the controller -->
-    </SplitPane>
-
-</VBox>
+</BorderPane>
