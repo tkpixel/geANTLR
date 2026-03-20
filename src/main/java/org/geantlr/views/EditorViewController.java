@@ -78,6 +78,7 @@ public class EditorViewController {
                         // Clear the command in ViewModel to allow repeated commands
                         this.viewModel.clearInsertTextCommand();
                         this.viewModel.setUpdating(false);
+                        this.viewModel.setTextContent(editorCodeArea.getText());
                     }
                 }
             });
