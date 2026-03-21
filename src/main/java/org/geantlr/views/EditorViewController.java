@@ -217,12 +217,12 @@ public class EditorViewController {
 
     private Color getHighlightColor(String cssClass) {
         // Fallback mapping since addHighlight requires Color instead of CSS class strings
-        switch (cssClass) {
-            case "keyword": return Color.web("#5747a6"); // -color-accent-emphasis
-            case "string": return Color.web("#2da44e"); // -color-success-fg
-            case "number": return Color.web("#bf8700"); // -color-warning-fg
-            case "comment": return Color.web("#8c959f"); // -color-fg-muted
-            default: return null;
-        }
+        return switch (cssClass) {
+            case "keyword" -> Color.web("#000080"); // Standard Java keyword
+            case "string" -> Color.web("#008000");  // Standard Java string
+            case "number" -> Color.web("#bf8700");  // -color-warning-fg
+            case "comment" -> Color.web("#8c959f"); // -color-fg-muted
+            default -> null;
+        };
     }
 }

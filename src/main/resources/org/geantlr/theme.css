@@ -20,12 +20,13 @@
 
 /* Syntax Highlighting */
 .editor-code-area .keyword {
-    -fx-fill: -color-accent-emphasis;
+    -fx-fill: #000080;
     -fx-font-weight: bold;
 }
 
 .editor-code-area .string {
-    -fx-fill: -color-success-fg;
+    -fx-fill: #008000;
+    -fx-font-weight: bold;
 }
 
 .editor-code-area .number {
