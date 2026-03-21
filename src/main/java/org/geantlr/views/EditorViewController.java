@@ -4,6 +4,9 @@ import io.micronaut.context.annotation.Prototype;
 import jakarta.inject.Inject;
 import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.paint.Color;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.control.Button;
@@ -38,6 +41,19 @@ public class EditorViewController {
     public void initialize() {
         if (editorCodeArea != null) {
             editorCodeArea.setLineNumbersEnabled(true);
+
+            editorCodeArea.sceneProperty().addListener((obs, oldScene, newScene) -> {
+                if (newScene != null) {
+                    newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.F, KeyCombination.SHORTCUT_DOWN, KeyCombination.SHIFT_DOWN),
+                        () -> {
+                            if (this.viewModel != null) {
+                                this.viewModel.formatCode();
+                            }
+                        }
+                    );
+                }
+            });
         }
     }
 
@@ -60,6 +76,22 @@ public class EditorViewController {
             this.viewModel.textContentProperty().addListener((obs, oldVal, newVal) -> {
                 if (!newVal.equals(editorCodeArea.getText())) {
                     editorCodeArea.setText(newVal);
+                }
+            });
+
+            // Listen to replace text command for formatting
+            this.viewModel.replaceTextCommandProperty().addListener((obs, oldVal, newVal) -> {
+                if (newVal != null) {
+                    try {
+                        // replaceText applies a single action to the undo stack
+                        // Using 'false' for 'preserveStyle' parameter
+                        int lastParagraph = editorCodeArea.getModel().size() - 1;
+                        editorCodeArea.replaceText(TextPos.ofLeading(0, 0), TextPos.ofLeading(lastParagraph, editorCodeArea.getModel().getPlainText(lastParagraph).length()), newVal.text(), false);
+                    } finally {
+                        this.viewModel.clearReplaceTextCommand();
+                        this.viewModel.setUpdating(false);
+                        this.viewModel.setTextContent(editorCodeArea.getText());
+                    }
                 }
             });
 

@@ -10,6 +10,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import org.geantlr.services.AntlrGrammarService;
 import org.geantlr.services.CodeCompletionService;
+import org.geantlr.services.CodeFormattingService;
 import org.geantlr.services.ParseResult;
 import org.geantlr.services.SyntaxError;
 import org.antlr.v4.runtime.Token;
@@ -40,14 +41,19 @@ public class EditorViewModel {
 
     private final AntlrGrammarService antlrGrammarService;
     private final CodeCompletionService codeCompletionService;
+    private final CodeFormattingService codeFormattingService;
     private final MainViewModel mainViewModel;
 
     private final PauseTransition debounce = new PauseTransition(Duration.millis(300));
 
+    public record ReplaceTextCommand(String text) {}
+    private final ObjectProperty<ReplaceTextCommand> replaceTextCommand = new SimpleObjectProperty<>();
+
     @Inject
-    public EditorViewModel(AntlrGrammarService antlrGrammarService, CodeCompletionService codeCompletionService, MainViewModel mainViewModel) {
+    public EditorViewModel(AntlrGrammarService antlrGrammarService, CodeCompletionService codeCompletionService, CodeFormattingService codeFormattingService, MainViewModel mainViewModel) {
         this.antlrGrammarService = antlrGrammarService;
         this.codeCompletionService = codeCompletionService;
+        this.codeFormattingService = codeFormattingService;
         this.mainViewModel = mainViewModel;
 
         debounce.setOnFinished(event -> parseText(textContent.get()));
@@ -160,6 +166,30 @@ public class EditorViewModel {
 
     public ObjectProperty<InsertTextCommand> insertTextCommandProperty() {
         return insertTextCommand;
+    }
+
+    public ObjectProperty<ReplaceTextCommand> replaceTextCommandProperty() {
+        return replaceTextCommand;
+    }
+
+    public void clearReplaceTextCommand() {
+        replaceTextCommand.set(null);
+    }
+
+    public void formatCode() {
+        var grammar = mainViewModel.getDynamicGrammar();
+        if (grammar == null) return;
+
+        String currentText = textContent.get();
+        CompletableFuture.supplyAsync(() -> codeFormattingService.formatCode(grammar, currentText))
+            .thenAccept(formattedText -> {
+                Platform.runLater(() -> {
+                    if (formattedText != null && !formattedText.equals(currentText)) {
+                        setUpdating(true);
+                        replaceTextCommand.set(new ReplaceTextCommand(formattedText));
+                    }
+                });
+            });
     }
 
     public boolean isUpdating() {
