@@ -106,11 +106,23 @@
 .pill-button {
     -fx-background-radius: 15px;
     -fx-border-radius: 15px;
-    -fx-text-fill: -color-fg-default;
+    -fx-background-color: -color-accent-emphasis;
+    -fx-text-fill: white;
+}
+
+.pill-button:hover {
+    -fx-background-color: derive(-color-accent-emphasis, -10%);
 }
 
 .pill-button:focused {
     -fx-background-radius: 15px;
     -fx-border-radius: 15px;
-    -fx-text-fill: -color-fg-default;
+    -fx-background-color: -color-accent-emphasis;
+    -fx-text-fill: white;
+    -fx-border-color: derive(-color-accent-emphasis, 20%);
+    -fx-border-width: 2px;
+}
+
+.pill-button:armed {
+    -fx-background-color: derive(-color-accent-emphasis, -20%);
 }
