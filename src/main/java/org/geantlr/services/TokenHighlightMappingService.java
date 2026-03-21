@@ -55,6 +55,9 @@ public class TokenHighlightMappingService {
         if (symbolicName == null) {
             return null;
         }
-        return tokenToCssClassMap.get(symbolicName.toUpperCase());
+        return switch (symbolicName.toUpperCase()) {
+            case "GRAMMAR", "PARSER", "LEXER", "RETURNS", "LOCALS", "IMPORT", "FRAGMENT", "OPTIONS", "MODE", "CATCH", "FINALLY", "THROWS", "CHANNELS" -> "keyword";
+            default -> tokenToCssClassMap.get(symbolicName.toUpperCase());
+        };
     }
 }
