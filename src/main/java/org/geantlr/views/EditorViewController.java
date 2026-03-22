@@ -10,6 +10,8 @@ import javafx.scene.input.KeyCombination;
 import javafx.scene.paint.Color;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.control.Button;
+import javafx.scene.control.TextField;
+import javafx.scene.control.ProgressIndicator;
 import jfx.incubator.scene.control.richtext.CodeArea;
 import jfx.incubator.scene.control.richtext.SyntaxDecorator;
 import jfx.incubator.scene.control.richtext.model.CodeTextModel;
@@ -28,6 +30,15 @@ public class EditorViewController {
 
     @FXML
     private FlowPane suggestionsPane;
+
+    @FXML
+    private TextField promptTextField;
+
+    @FXML
+    private Button generateButton;
+
+    @FXML
+    private ProgressIndicator generationProgress;
 
     private EditorViewModel viewModel;
     private final TokenHighlightMappingService tokenHighlightMappingService;
@@ -59,6 +70,26 @@ public class EditorViewController {
 
     public void setViewModel(EditorViewModel viewModel) {
         this.viewModel = viewModel;
+
+        if (generateButton != null && promptTextField != null && generationProgress != null) {
+            generationProgress.visibleProperty().bind(this.viewModel.isGeneratingProperty());
+            generateButton.disableProperty().bind(this.viewModel.isGeneratingProperty());
+
+            generateButton.setOnAction(e -> {
+                String prompt = promptTextField.getText();
+                if (prompt != null && !prompt.isBlank()) {
+                    this.viewModel.generateRuleFromText(prompt);
+                }
+            });
+
+            promptTextField.setOnAction(e -> {
+                String prompt = promptTextField.getText();
+                if (prompt != null && !prompt.isBlank()) {
+                    this.viewModel.generateRuleFromText(prompt);
+                }
+            });
+        }
+
         if (editorCodeArea != null) {
             // Unbind previous listeners if necessary (simplified for demo)
 

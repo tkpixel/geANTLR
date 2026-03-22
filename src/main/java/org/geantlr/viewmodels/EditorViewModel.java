@@ -36,6 +36,8 @@ public class EditorViewModel {
 
     private final ObjectProperty<InsertTextCommand> insertTextCommand = new SimpleObjectProperty<>();
 
+    private final javafx.beans.property.BooleanProperty isGenerating = new javafx.beans.property.SimpleBooleanProperty(false);
+
     private boolean isUpdating = false;
     private int currentCaretPosition = 0;
 
@@ -43,6 +45,7 @@ public class EditorViewModel {
     private final CodeCompletionService codeCompletionService;
     private final CodeFormattingService codeFormattingService;
     private final MainViewModel mainViewModel;
+    private final org.geantlr.services.RuleGenerationService ruleGenerationService;
 
     private final PauseTransition debounce = new PauseTransition(Duration.millis(300));
 
@@ -50,11 +53,12 @@ public class EditorViewModel {
     private final ObjectProperty<ReplaceTextCommand> replaceTextCommand = new SimpleObjectProperty<>();
 
     @Inject
-    public EditorViewModel(AntlrGrammarService antlrGrammarService, CodeCompletionService codeCompletionService, CodeFormattingService codeFormattingService, MainViewModel mainViewModel) {
+    public EditorViewModel(AntlrGrammarService antlrGrammarService, CodeCompletionService codeCompletionService, CodeFormattingService codeFormattingService, MainViewModel mainViewModel, org.geantlr.services.RuleGenerationService ruleGenerationService) {
         this.antlrGrammarService = antlrGrammarService;
         this.codeCompletionService = codeCompletionService;
         this.codeFormattingService = codeFormattingService;
         this.mainViewModel = mainViewModel;
+        this.ruleGenerationService = ruleGenerationService;
 
         debounce.setOnFinished(event -> parseText(textContent.get()));
 
@@ -172,6 +176,14 @@ public class EditorViewModel {
         return replaceTextCommand;
     }
 
+    public javafx.beans.property.BooleanProperty isGeneratingProperty() {
+        return isGenerating;
+    }
+
+    public boolean isGenerating() {
+        return isGenerating.get();
+    }
+
     public void clearReplaceTextCommand() {
         replaceTextCommand.set(null);
     }
@@ -227,5 +239,39 @@ public class EditorViewModel {
         int caretPosition = this.currentCaretPosition;
         CompletableFuture.supplyAsync(() -> codeCompletionService.getSuggestedTokens(grammar, text, caretPosition))
             .thenAccept(suggestions -> Platform.runLater(() -> suggestedTokens.setAll(suggestions)));
+    }
+
+    public void generateRuleFromText(String naturalLanguagePrompt) {
+        if (isGenerating.get() || naturalLanguagePrompt == null || naturalLanguagePrompt.isBlank()) {
+            return;
+        }
+
+        isGenerating.set(true);
+
+        javafx.concurrent.Task<String> generationTask = new javafx.concurrent.Task<>() {
+            @Override
+            protected String call() throws Exception {
+                return ruleGenerationService.generateRule(naturalLanguagePrompt);
+            }
+        };
+
+        generationTask.setOnSucceeded(event -> {
+            isGenerating.set(false);
+            String result = generationTask.getValue();
+            if (result != null && !result.isEmpty()) {
+                setUpdating(true);
+                insertTextCommand.set(new InsertTextCommand(result));
+            }
+        });
+
+        generationTask.setOnFailed(event -> {
+            isGenerating.set(false);
+            Throwable e = generationTask.getException();
+            if (e != null) {
+                e.printStackTrace();
+            }
+        });
+
+        new Thread(generationTask).start();
     }
 }
