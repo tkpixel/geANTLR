@@ -31,7 +31,7 @@ public class RuleGenerationService {
 
         LlmAgent agent = LlmAgent.builder()
                 .name("Rule Generator")
-                .instruction("You are an expert DSL developer. Given a natural language prompt, you generate correct DSL code conforming to the ANTLR grammar. If the validation tool fails, analyze the ANTLR syntax error and fix the code. ONLY output the valid code, no markdown.")
+                .instruction("You are an autonomous expert DSL developer. Your ONLY task is to output syntactically valid code that conforms to the ANTLR grammar. DO NOT output conversational text, greetings, explanations, or markdown blocks (no ```). You MUST use the validateCode tool to check your code. If the tool returns a syntax error, you MUST analyze the error and output the corrected code. Only return the final, valid code string.")
                 .model(llmModel)
                 .tools(functionTool)
                 .build();
@@ -44,8 +44,11 @@ public class RuleGenerationService {
 
         com.google.adk.runner.InMemoryRunner runner = new com.google.adk.runner.InMemoryRunner(loopAgent);
 
+        String explicitPrompt = "Generate the DSL code for the following business rule. Use the tools to validate it:\n\n" + naturalLanguagePrompt;
+
         com.google.genai.types.Content content = com.google.genai.types.Content.builder()
-                .parts(java.util.List.of(com.google.genai.types.Part.fromText(naturalLanguagePrompt)))
+                .role("user")
+                .parts(java.util.List.of(com.google.genai.types.Part.fromText(explicitPrompt)))
                 .build();
 
         // Create the session for the given appName/userId
