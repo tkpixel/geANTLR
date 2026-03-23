@@ -48,7 +48,12 @@ public class RuleGenerationService {
                 .parts(java.util.List.of(com.google.genai.types.Part.fromText(naturalLanguagePrompt)))
                 .build();
 
-        String result = runner.runAsync("default", "default", content)
+        // Create the session for the given appName/userId
+        com.google.adk.sessions.Session session = runner.sessionService()
+                .createSession("default", "default")
+                .blockingGet();
+
+        String result = runner.runAsync(session, content, com.google.adk.agents.RunConfig.builder().build())
                 .blockingLast()
                 .stringifyContent();
 
