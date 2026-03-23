@@ -44,7 +44,7 @@ public class App extends Application {
         String customCss = getClass().getResource("/org/geantlr/theme.css").toExternalForm();
         scene.getStylesheets().add(customCss);
 
-        stage.setTitle("GeantLR Editor Demo");
+        stage.setTitle("geANTLR Editor Demo");
         stage.initStyle(StageStyle.EXTENDED);
         stage.setScene(scene);
 

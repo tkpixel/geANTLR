@@ -17,7 +17,7 @@
         <VBox>
             <HeaderBar fx:id="headerBar">
                 <center>
-                    <Label text="GeantLR Editor Demo" />
+                    <Label text="geANTLR Editor Demo" />
                 </center>
             </HeaderBar>
             <ToolBar>
