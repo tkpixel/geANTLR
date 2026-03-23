@@ -20,10 +20,19 @@ public class DynamicGrammar {
 
     private org.antlr.v4.runtime.atn.ATN atn;
     private org.antlr.v4.runtime.Vocabulary vocabulary;
+    private String rawGrammarText;
 
     public DynamicGrammar(Grammar parserGrammar, LexerGrammar lexerGrammar) {
         this.parserGrammar = parserGrammar;
         this.lexerGrammar = lexerGrammar;
+    }
+
+    public void setRawGrammarText(String rawGrammarText) {
+        this.rawGrammarText = rawGrammarText;
+    }
+
+    public String getRawGrammarText() {
+        return rawGrammarText;
     }
 
     /**

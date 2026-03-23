@@ -8,15 +8,19 @@ import dev.langchain4j.model.chat.ChatModel;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.geantlr.services.AntlrValidationTool;
+import org.geantlr.viewmodels.MainViewModel;
 import java.time.Duration;
 
 @Singleton
 public class RuleGenerationService {
 
     private final AntlrValidationTool validationTool;
+    private final MainViewModel mainViewModel;
+
     @Inject
-    public RuleGenerationService(AntlrValidationTool validationTool) {
+    public RuleGenerationService(AntlrValidationTool validationTool, MainViewModel mainViewModel) {
         this.validationTool = validationTool;
+        this.mainViewModel = mainViewModel;
     }
 
     public String generateRule(String naturalLanguagePrompt) {
@@ -46,7 +50,15 @@ public class RuleGenerationService {
 
         com.google.adk.runner.InMemoryRunner runner = new com.google.adk.runner.InMemoryRunner(loopAgent);
 
-        String explicitPrompt = "Generate the DSL code for the following business rule. Use the tools to validate it:\n\n" + naturalLanguagePrompt;
+        String grammarText = "";
+        DynamicGrammar grammar = mainViewModel.getDynamicGrammar();
+        if (grammar != null && grammar.getRawGrammarText() != null) {
+            grammarText = grammar.getRawGrammarText();
+        }
+
+        String explicitPrompt = "Generate the DSL code for the following business rule. Here is the ANTLRv4 grammar you MUST conform to:\n\n"
+                + grammarText + "\n\n"
+                + "Rule to generate:\n" + naturalLanguagePrompt;
 
         com.google.genai.types.Content content = com.google.genai.types.Content.builder()
                 .role("user")
