@@ -13,15 +13,17 @@ import org.geantlr.services.AntlrValidationTool;
 public class RuleGenerationService {
 
     private final AntlrValidationTool validationTool;
-    private final ChatModel chatModel;
-
     @Inject
-    public RuleGenerationService(AntlrValidationTool validationTool, ChatModel chatModel) {
+    public RuleGenerationService(AntlrValidationTool validationTool) {
         this.validationTool = validationTool;
-        this.chatModel = chatModel;
     }
 
     public String generateRule(String naturalLanguagePrompt) {
+        ChatModel chatModel = dev.langchain4j.model.ollama.OllamaChatModel.builder()
+                .baseUrl("http://localhost:11434")
+                .modelName("llama3")
+                .build();
+
         LangChain4j llmModel = new LangChain4j(chatModel);
 
         // Create tool from annotated method. FunctionTool handles @Schema annotated methods

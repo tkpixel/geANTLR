@@ -20,6 +20,7 @@ module org.geantlr {
     requires google.adk.contrib.langchain4j;
     requires langchain4j.core;
     requires io.reactivex.rxjava3;
+    requires langchain4j.ollama;
     requires google.genai;
 
     opens org.geantlr to javafx.fxml;
