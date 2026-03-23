@@ -23,7 +23,7 @@ public class RuleGenerationService {
         this.mainViewModel = mainViewModel;
     }
 
-    public String generateRule(String naturalLanguagePrompt) {
+    public String generateRule(String naturalLanguagePrompt, String referenceTemplate) {
         ChatModel chatModel = dev.langchain4j.model.ollama.OllamaChatModel.builder()
                 .baseUrl("http://localhost:11434")
                 .modelName("qwen2.5-coder:7b")
@@ -35,9 +35,15 @@ public class RuleGenerationService {
         // Create tool from annotated method. FunctionTool handles @Schema annotated methods
         FunctionTool functionTool = FunctionTool.create(validationTool, "validateCode");
 
+        String instruction = "You are an autonomous expert DSL developer. Your ONLY task is to output syntactically valid code that conforms to the ANTLR grammar. DO NOT output conversational text, greetings, explanations, or markdown blocks (no ```). You MUST use the validateCode tool to check your code. If the tool returns a syntax error, you MUST analyze the error and output the corrected code. Only return the final, valid code string.";
+
+        if (referenceTemplate != null && !referenceTemplate.trim().isEmpty()) {
+            instruction += "\n\nNutze die folgende Regel ausschließlich als Referenz für den syntaktischen Aufbau und den Stil. Übernimm NICHT die fachliche Logik des Templates, sondern schreibe eine neue Regel basierend auf dem aktuellen Nutzer-Wunsch:\n" + referenceTemplate;
+        }
+
         LlmAgent agent = LlmAgent.builder()
                 .name("Rule Generator")
-                .instruction("You are an autonomous expert DSL developer. Your ONLY task is to output syntactically valid code that conforms to the ANTLR grammar. DO NOT output conversational text, greetings, explanations, or markdown blocks (no ```). You MUST use the validateCode tool to check your code. If the tool returns a syntax error, you MUST analyze the error and output the corrected code. Only return the final, valid code string.")
+                .instruction(instruction)
                 .model(llmModel)
                 .tools(functionTool)
                 .build();

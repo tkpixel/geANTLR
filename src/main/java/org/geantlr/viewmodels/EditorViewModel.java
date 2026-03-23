@@ -38,6 +38,9 @@ public class EditorViewModel {
 
     private final javafx.beans.property.BooleanProperty isGenerating = new javafx.beans.property.SimpleBooleanProperty(false);
 
+    private final StringProperty referenceTemplate = new SimpleStringProperty("");
+    private final StringProperty referenceTemplateName = new SimpleStringProperty("");
+
     private boolean isUpdating = false;
     private int currentCaretPosition = 0;
 
@@ -245,6 +248,14 @@ public class EditorViewModel {
             .thenAccept(suggestions -> Platform.runLater(() -> suggestedTokens.setAll(suggestions)));
     }
 
+    public StringProperty referenceTemplateProperty() {
+        return referenceTemplate;
+    }
+
+    public StringProperty referenceTemplateNameProperty() {
+        return referenceTemplateName;
+    }
+
     public void generateRuleFromText(String naturalLanguagePrompt) {
         if (isGenerating.get() || naturalLanguagePrompt == null || naturalLanguagePrompt.isBlank()) {
             return;
@@ -255,7 +266,7 @@ public class EditorViewModel {
         javafx.concurrent.Task<String> generationTask = new javafx.concurrent.Task<>() {
             @Override
             protected String call() throws Exception {
-                return ruleGenerationService.generateRule(naturalLanguagePrompt);
+                return ruleGenerationService.generateRule(naturalLanguagePrompt, referenceTemplate.get());
             }
         };
 

@@ -10,9 +10,14 @@ import javafx.scene.input.KeyCombination;
 import javafx.scene.paint.Color;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.Label;
+import javafx.stage.FileChooser;
+import java.io.File;
+import java.nio.file.Files;
 import jfx.incubator.scene.control.richtext.CodeArea;
 import jfx.incubator.scene.control.richtext.SyntaxDecorator;
 import jfx.incubator.scene.control.richtext.model.CodeTextModel;
@@ -33,7 +38,7 @@ public class EditorViewController {
     private FlowPane suggestionsPane;
 
     @FXML
-    private HBox experimentalBox;
+    private VBox experimentalBox;
 
     @FXML
     private TextArea promptTextArea;
@@ -43,6 +48,12 @@ public class EditorViewController {
 
     @FXML
     private ProgressIndicator generationProgress;
+
+    @FXML
+    private Button selectTemplateButton;
+
+    @FXML
+    private Label templateNameLabel;
 
     private EditorViewModel viewModel;
     private final TokenHighlightMappingService tokenHighlightMappingService;
@@ -78,14 +89,34 @@ public class EditorViewController {
         if (generateButton != null && promptTextArea != null && generationProgress != null && experimentalBox != null) {
             generationProgress.visibleProperty().bind(this.viewModel.isGeneratingProperty());
             generateButton.disableProperty().bind(this.viewModel.isGeneratingProperty());
+            selectTemplateButton.disableProperty().bind(this.viewModel.isGeneratingProperty());
 
             experimentalBox.visibleProperty().bind(this.viewModel.experimentalModeProperty());
             experimentalBox.managedProperty().bind(this.viewModel.experimentalModeProperty());
+
+            templateNameLabel.textProperty().bind(this.viewModel.referenceTemplateNameProperty());
+            templateNameLabel.visibleProperty().bind(this.viewModel.referenceTemplateNameProperty().isNotEmpty());
+            templateNameLabel.managedProperty().bind(this.viewModel.referenceTemplateNameProperty().isNotEmpty());
 
             generateButton.setOnAction(e -> {
                 String prompt = promptTextArea.getText();
                 if (prompt != null && !prompt.isBlank()) {
                     this.viewModel.generateRuleFromText(prompt);
+                }
+            });
+
+            selectTemplateButton.setOnAction(e -> {
+                FileChooser fileChooser = new FileChooser();
+                fileChooser.setTitle("Select Template Rule File");
+                File selectedFile = fileChooser.showOpenDialog(selectTemplateButton.getScene().getWindow());
+                if (selectedFile != null) {
+                    try {
+                        String content = Files.readString(selectedFile.toPath());
+                        this.viewModel.referenceTemplateProperty().set(content);
+                        this.viewModel.referenceTemplateNameProperty().set("Template: " + selectedFile.getName());
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
                 }
             });
         }
