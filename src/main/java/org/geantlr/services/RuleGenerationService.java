@@ -8,6 +8,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.geantlr.services.AntlrValidationTool;
+import java.time.Duration;
 
 @Singleton
 public class RuleGenerationService {
@@ -22,6 +23,7 @@ public class RuleGenerationService {
         ChatModel chatModel = dev.langchain4j.model.ollama.OllamaChatModel.builder()
                 .baseUrl("http://localhost:11434")
                 .modelName("qwen2.5-coder:7b")
+                .timeout(Duration.ofMinutes(5))
                 .build();
 
         LangChain4j llmModel = new LangChain4j(chatModel);
