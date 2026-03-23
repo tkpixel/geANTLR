@@ -131,6 +131,12 @@ public class EditorViewController {
                 if (newVal != null) {
                     try {
                         TextPos currentPos = editorCodeArea.getCaretPosition();
+                        if (currentPos == null) {
+                            int lastParagraph = Math.max(0, editorCodeArea.getModel().size() - 1);
+                            int textLen = editorCodeArea.getModel().getPlainText(lastParagraph).length();
+                            currentPos = TextPos.ofLeading(lastParagraph, textLen);
+                        }
+
                         editorCodeArea.insertText(currentPos, newVal.text() + " ", null);
 
                         int newOffset = currentPos.offset() + newVal.text().length() + 1;
