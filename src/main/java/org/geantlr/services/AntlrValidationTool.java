@@ -21,12 +21,12 @@ public class AntlrValidationTool {
     }
 
     @Schema(name = "validateCode", description = "Validates the generated DSL code using the ANTLR grammar")
-    public String validateCode(
+    public java.util.Map<String, Object> validateCode(
             @Schema(name = "dslCode", description = "The DSL code to validate") String dslCode) {
 
         DynamicGrammar grammar = mainViewModel.getDynamicGrammar();
         if (grammar == null) {
-            return "SUCCESS"; // Nothing to validate against
+            return java.util.Map.of("result", "SUCCESS"); // Nothing to validate against
         }
 
         CustomErrorListener errorListener = new CustomErrorListener();
@@ -55,7 +55,7 @@ public class AntlrValidationTool {
         }
 
         if (errorListener.getErrors().isEmpty()) {
-            return "SUCCESS";
+            return java.util.Map.of("result", "SUCCESS");
         }
 
         StringBuilder errorMessage = new StringBuilder("Syntax Errors found:\n");
@@ -64,6 +64,6 @@ public class AntlrValidationTool {
                     error.line(), error.charPositionInLine(), error.length(), error.message()));
         }
 
-        return errorMessage.toString();
+        return java.util.Map.of("result", errorMessage.toString());
     }
 }
