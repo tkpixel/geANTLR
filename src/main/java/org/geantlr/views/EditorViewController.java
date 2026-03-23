@@ -9,8 +9,9 @@ import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.paint.Color;
 import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.control.Button;
-import javafx.scene.control.TextField;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.ProgressIndicator;
 import jfx.incubator.scene.control.richtext.CodeArea;
 import jfx.incubator.scene.control.richtext.SyntaxDecorator;
@@ -32,7 +33,10 @@ public class EditorViewController {
     private FlowPane suggestionsPane;
 
     @FXML
-    private TextField promptTextField;
+    private HBox experimentalBox;
+
+    @FXML
+    private TextArea promptTextArea;
 
     @FXML
     private Button generateButton;
@@ -71,19 +75,15 @@ public class EditorViewController {
     public void setViewModel(EditorViewModel viewModel) {
         this.viewModel = viewModel;
 
-        if (generateButton != null && promptTextField != null && generationProgress != null) {
+        if (generateButton != null && promptTextArea != null && generationProgress != null && experimentalBox != null) {
             generationProgress.visibleProperty().bind(this.viewModel.isGeneratingProperty());
             generateButton.disableProperty().bind(this.viewModel.isGeneratingProperty());
 
-            generateButton.setOnAction(e -> {
-                String prompt = promptTextField.getText();
-                if (prompt != null && !prompt.isBlank()) {
-                    this.viewModel.generateRuleFromText(prompt);
-                }
-            });
+            experimentalBox.visibleProperty().bind(this.viewModel.experimentalModeProperty());
+            experimentalBox.managedProperty().bind(this.viewModel.experimentalModeProperty());
 
-            promptTextField.setOnAction(e -> {
-                String prompt = promptTextField.getText();
+            generateButton.setOnAction(e -> {
+                String prompt = promptTextArea.getText();
                 if (prompt != null && !prompt.isBlank()) {
                     this.viewModel.generateRuleFromText(prompt);
                 }

@@ -50,7 +50,7 @@ public class MainViewController {
     private final IGrammarLoaderService grammarLoaderService;
     private final ApplicationContext context;
 
-    private boolean isDarkMode = false;
+    private boolean isDarkMode = true;
 
     // Track instances
     private final Map<EditorViewModel, Region> editorRegions = new HashMap<>();
@@ -105,6 +105,11 @@ public class MainViewController {
             Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
             themeIcon.setIconLiteral("mdi2w-white-balance-sunny");
         }
+    }
+
+    @FXML
+    private void toggleExperimentalMode() {
+        viewModel.setExperimentalMode(!viewModel.isExperimentalMode());
     }
 
     @FXML

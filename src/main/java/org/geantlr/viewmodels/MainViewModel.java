@@ -19,6 +19,9 @@ public class MainViewModel {
     // Property to hold the currently loaded dynamic grammar
     private final ObjectProperty<DynamicGrammar> dynamicGrammar = new SimpleObjectProperty<>(null);
 
+    // Property to toggle experimental mode
+    private final javafx.beans.property.BooleanProperty experimentalMode = new javafx.beans.property.SimpleBooleanProperty(false);
+
     public ObservableList<EditorViewModel> getActiveEditors() {
         return activeEditors;
     }
@@ -43,5 +46,17 @@ public class MainViewModel {
 
     public ObjectProperty<DynamicGrammar> dynamicGrammarProperty() {
         return dynamicGrammar;
+    }
+
+    public javafx.beans.property.BooleanProperty experimentalModeProperty() {
+        return experimentalMode;
+    }
+
+    public boolean isExperimentalMode() {
+        return experimentalMode.get();
+    }
+
+    public void setExperimentalMode(boolean isExperimentalMode) {
+        this.experimentalMode.set(isExperimentalMode);
     }
 }

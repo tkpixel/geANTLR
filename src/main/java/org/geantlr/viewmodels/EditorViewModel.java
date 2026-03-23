@@ -47,6 +47,10 @@ public class EditorViewModel {
     private final MainViewModel mainViewModel;
     private final org.geantlr.services.RuleGenerationService ruleGenerationService;
 
+    public javafx.beans.property.BooleanProperty experimentalModeProperty() {
+        return mainViewModel.experimentalModeProperty();
+    }
+
     private final PauseTransition debounce = new PauseTransition(Duration.millis(300));
 
     public record ReplaceTextCommand(String text) {}
