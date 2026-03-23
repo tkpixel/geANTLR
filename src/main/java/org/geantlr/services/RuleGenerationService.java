@@ -21,7 +21,7 @@ public class RuleGenerationService {
     public String generateRule(String naturalLanguagePrompt) {
         ChatModel chatModel = dev.langchain4j.model.ollama.OllamaChatModel.builder()
                 .baseUrl("http://localhost:11434")
-                .modelName("llama3")
+                .modelName("qwen2.5-coder:7b")
                 .build();
 
         LangChain4j llmModel = new LangChain4j(chatModel);
