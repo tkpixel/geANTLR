@@ -54,8 +54,17 @@ public class RuleGenerationService {
                 .blockingGet();
 
         String result = runner.runAsync(session, content, com.google.adk.agents.RunConfig.builder().build())
-                .blockingLast()
-                .stringifyContent();
+                .filter(e -> e.content().isPresent() && e.content().get().text() != null && !e.content().get().text().isEmpty())
+                .map(com.google.adk.events.Event::stringifyContent)
+                .scan((a, b) -> a + b) // Accumulate if there are multiple parts
+                .blockingLast(""); // Provide default empty string instead of throwing if empty
+
+        System.out.println("LLM Output Result:\n" + result);
+
+        // Strip markdown backticks if present
+        if (result != null && result.contains("```")) {
+            result = result.replaceAll("```[a-zA-Z]*\\n?", "").replaceAll("```", "").trim();
+        }
 
         return result;
     }
