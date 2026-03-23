@@ -22,11 +22,6 @@
                 </center>
             </HeaderBar>
             <ToolBar>
-                <Button text="Toggle Editors" onAction="#toggleEditors">
-                    <graphic>
-                        <FontIcon iconLiteral="mdi2p-page-layout-body" iconSize="20"/>
-                    </graphic>
-                </Button>
                 <Button text="Load Grammar" onAction="#loadGrammar">
                     <graphic>
                         <FontIcon iconLiteral="mdi2f-file-code-outline" iconSize="20"/>
@@ -51,6 +46,11 @@
                 <!-- Spacer -->
                 <HBox HBox.hgrow="ALWAYS" />
 
+                <Button text="Toggle Editors" onAction="#toggleEditors">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2p-page-layout-body" iconSize="20"/>
+                    </graphic>
+                </Button>
                 <Button fx:id="themeToggleBtn" text="Toggle Theme" onAction="#toggleTheme">
                     <graphic>
                         <FontIcon fx:id="themeIcon" iconLiteral="mdi2w-white-balance-sunny" iconSize="20"/>
