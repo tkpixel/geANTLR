@@ -22,6 +22,7 @@ module org.geantlr {
     requires io.reactivex.rxjava3;
     requires langchain4j.ollama;
     requires google.genai;
+    requires java.net.http;
 
     opens org.geantlr to javafx.fxml;
     opens org.geantlr.views to javafx.fxml;
