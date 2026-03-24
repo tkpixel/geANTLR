@@ -56,6 +56,19 @@ public class TokenHighlightMappingService {
             return "annotation";
         }
 
+        // Text-based heuristics
+        if (text != null) {
+            if (text.startsWith("//") || text.startsWith("/*") || text.startsWith("#")) {
+                return "comment";
+            }
+            if (text.matches("([\"']).*\\1")) {
+                return "string";
+            }
+            if (text.matches("-?\\d+(\\.\\d+)?")) {
+                return "number";
+            }
+        }
+
         // Identify keywords dynamically from vocabulary literal names (e.g., 'REGEL', 'WENN')
         // Allows Unicode characters like German umlauts and hyphens.
         if (vocabulary != null) {
@@ -71,13 +84,28 @@ public class TokenHighlightMappingService {
 
         // Dynamically identify keywords based on common ANTLR grammar naming conventions
         String upperName = symbolicName.toUpperCase();
-        if (upperName.endsWith("_KW") || upperName.endsWith("KEYWORD")) {
+
+        if (upperName.contains("COMMENT")) {
+            return "comment";
+        }
+        if (upperName.contains("STRING")) {
+            return "string";
+        }
+        if (upperName.contains("NUMBER") || upperName.contains("INT") || upperName.contains("FLOAT") || upperName.contains("LITERAL") && (upperName.contains("NUM") || upperName.contains("DEC") || upperName.contains("HEX"))) {
+            return "number";
+        }
+        if (upperName.endsWith("_KW") || upperName.contains("KEYWORD")) {
             return "keyword";
+        }
+
+        String mapped = tokenToCssClassMap.get(upperName);
+        if (mapped != null) {
+            return mapped;
         }
 
         return switch (upperName) {
             case "GRAMMAR", "PARSER", "LEXER", "RETURNS", "LOCALS", "IMPORT", "FRAGMENT", "OPTIONS", "MODE", "CATCH", "FINALLY", "THROWS", "CHANNELS" -> "keyword";
-            default -> tokenToCssClassMap.get(upperName);
+            default -> null;
         };
     }
 }
