@@ -263,10 +263,13 @@ public class EditorViewModel {
 
         isGenerating.set(true);
 
+        // Capture JavaFX properties safely on the UI thread before passing to the background task
+        final String templateContent = referenceTemplate.get();
+
         javafx.concurrent.Task<String> generationTask = new javafx.concurrent.Task<>() {
             @Override
             protected String call() throws Exception {
-                return ruleGenerationService.generateRule(naturalLanguagePrompt, referenceTemplate.get());
+                return ruleGenerationService.generateRule(naturalLanguagePrompt, templateContent);
             }
         };
 
