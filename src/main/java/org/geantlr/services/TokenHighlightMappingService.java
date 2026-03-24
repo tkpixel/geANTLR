@@ -41,6 +41,19 @@ public class TokenHighlightMappingService {
         addMapping("FALSE", "keyword");
         addMapping("NULL", "keyword");
 
+        // Custom German Keywords
+        addMapping("REGEL_KW", "keyword");
+        addMapping("WENN_KW", "keyword");
+        addMapping("REGEL", "keyword");
+        addMapping("WENN", "keyword");
+        addMapping("SONST", "keyword");
+        addMapping("PRUEFUNG", "keyword");
+        addMapping("ERGEBNIS", "keyword");
+        addMapping("ERFOLG", "keyword");
+        addMapping("FEHLER", "keyword");
+        addMapping("WAHR", "keyword");
+        addMapping("FALSCH", "keyword");
+
         // Operators
         addMapping("OPERATOR", "operator");
     }
@@ -54,6 +67,9 @@ public class TokenHighlightMappingService {
     public String getCssClass(String symbolicName) {
         if (symbolicName == null) {
             return null;
+        }
+        if (symbolicName.startsWith("@")) {
+            return "annotation";
         }
         return switch (symbolicName.toUpperCase()) {
             case "GRAMMAR", "PARSER", "LEXER", "RETURNS", "LOCALS", "IMPORT", "FRAGMENT", "OPTIONS", "MODE", "CATCH", "FINALLY", "THROWS", "CHANNELS" -> "keyword";
