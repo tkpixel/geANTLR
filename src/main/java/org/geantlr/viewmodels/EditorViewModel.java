@@ -29,7 +29,7 @@ public class EditorViewModel {
     private final ObservableList<Token> tokens = FXCollections.observableArrayList();
     private final ObservableList<String> suggestedTokens = FXCollections.observableArrayList();
 
-    public record TokenStyle(int startInLine, int endInLine, String symbolicName) {}
+    public record TokenStyle(int startInLine, int endInLine, String symbolicName, int tokenType) {}
     private java.util.Map<Integer, java.util.List<TokenStyle>> tokenStylesByLine = new java.util.HashMap<>();
 
     public record InsertTextCommand(String text) {}
@@ -163,7 +163,7 @@ public class EditorViewModel {
 
                 if (startInLine < endInLine) {
                     styles.computeIfAbsent(currentLine, k -> new java.util.ArrayList<>())
-                          .add(new TokenStyle(startInLine, endInLine, symbolicName));
+                          .add(new TokenStyle(startInLine, endInLine, symbolicName, token.getType()));
                 }
             }
         }

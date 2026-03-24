@@ -273,19 +273,23 @@ public class EditorViewController {
                     var tokenStyles = viewModel.getTokenStylesForLine(antlrLine);
 
                     if (vocab != null && tokenStyles != null && !tokenStyles.isEmpty()) {
+                        // Ensure token styles are sorted by their start index and do not overlap
+                        java.util.List<EditorViewModel.TokenStyle> sortedStyles = new java.util.ArrayList<>(tokenStyles);
+                        sortedStyles.sort(java.util.Comparator.comparingInt(EditorViewModel.TokenStyle::startInLine));
+
                         int currentIndex = 0;
-                        for (EditorViewModel.TokenStyle style : tokenStyles) {
+                        for (EditorViewModel.TokenStyle style : sortedStyles) {
                             int start = style.startInLine();
                             int end = style.endInLine();
 
-                            // Ensure valid bounds
-                            if (start >= 0 && end <= text.length() && start < end) {
-                                // Add unstyled text before this token
+                            // Ensure strict bounds checking to prevent overlap or out-of-order text duplication
+                            if (start >= currentIndex && end <= text.length() && start < end) {
+                                // Add any unstyled text before this token
                                 if (start > currentIndex) {
                                     builder.addSegment(text.substring(currentIndex, start));
                                 }
 
-                                String cssClass = tokenHighlightMappingService.getCssClass(style.symbolicName());
+                                String cssClass = tokenHighlightMappingService.getCssClass(style.symbolicName(), style.tokenType(), vocab);
                                 String tokenText = text.substring(start, end);
 
                                 if (cssClass != null) {
@@ -298,12 +302,12 @@ public class EditorViewController {
                             }
                         }
 
-                        // Add any remaining unstyled text
+                        // Add any remaining unstyled text at the end of the line
                         if (currentIndex < text.length()) {
                             builder.addSegment(text.substring(currentIndex));
                         }
                     } else {
-                        // No tokens, just add the whole text
+                        // No tokens to style, just add the whole text
                         builder.addSegment(text);
                     }
 
@@ -344,5 +348,4 @@ public class EditorViewController {
     private void updateEditorStyle(int size) {
         editorCodeArea.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: " + size + "pt;");
     }
-
 }

@@ -41,19 +41,6 @@ public class TokenHighlightMappingService {
         addMapping("FALSE", "keyword");
         addMapping("NULL", "keyword");
 
-        // Custom German Keywords
-        addMapping("REGEL_KW", "keyword");
-        addMapping("WENN_KW", "keyword");
-        addMapping("REGEL", "keyword");
-        addMapping("WENN", "keyword");
-        addMapping("SONST", "keyword");
-        addMapping("PRUEFUNG", "keyword");
-        addMapping("ERGEBNIS", "keyword");
-        addMapping("ERFOLG", "keyword");
-        addMapping("FEHLER", "keyword");
-        addMapping("WAHR", "keyword");
-        addMapping("FALSCH", "keyword");
-
         // Operators
         addMapping("OPERATOR", "operator");
     }
@@ -64,16 +51,31 @@ public class TokenHighlightMappingService {
         }
     }
 
-    public String getCssClass(String symbolicName) {
+    public String getCssClass(String symbolicName, int tokenType, org.antlr.v4.runtime.Vocabulary vocabulary) {
         if (symbolicName == null) {
             return null;
         }
         if (symbolicName.startsWith("@")) {
             return "annotation";
         }
-        return switch (symbolicName.toUpperCase()) {
+
+        // Dynamically identify keywords based on common ANTLR grammar naming conventions
+        String upperName = symbolicName.toUpperCase();
+        if (upperName.endsWith("_KW") || upperName.endsWith("KEYWORD")) {
+            return "keyword";
+        }
+
+        // Identify keywords dynamically from vocabulary literal names (e.g., 'REGEL', 'WENN')
+        if (vocabulary != null) {
+            String literalName = vocabulary.getLiteralName(tokenType);
+            if (literalName != null && literalName.matches("'[A-Za-z_][A-Za-z0-9_]*'")) {
+                return "keyword";
+            }
+        }
+
+        return switch (upperName) {
             case "GRAMMAR", "PARSER", "LEXER", "RETURNS", "LOCALS", "IMPORT", "FRAGMENT", "OPTIONS", "MODE", "CATCH", "FINALLY", "THROWS", "CHANNELS" -> "keyword";
-            default -> tokenToCssClassMap.get(symbolicName.toUpperCase());
+            default -> tokenToCssClassMap.get(upperName);
         };
     }
 }
