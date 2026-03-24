@@ -1,11 +1,13 @@
 package org.geantlr.services;
 
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.LexerInterpreter;
 import org.antlr.v4.runtime.ParserInterpreter;
+import org.antlr.v4.runtime.tree.ParseTree;
 
 import org.antlr.v4.runtime.Token;
 
@@ -15,9 +17,16 @@ import java.util.List;
 @Singleton
 public class AntlrGrammarService {
 
+    private final SymbolTableService symbolTableService;
+
+    @Inject
+    public AntlrGrammarService(SymbolTableService symbolTableService) {
+        this.symbolTableService = symbolTableService;
+    }
+
     public ParseResult parseText(DynamicGrammar dynamicGrammar, String text) {
         if (dynamicGrammar == null || text == null || text.isEmpty()) {
-            return new ParseResult(Collections.emptyList(), Collections.emptyList());
+            return new ParseResult(Collections.emptyList(), Collections.emptyList(), null);
         }
 
         CustomErrorListener errorListener = new CustomErrorListener();
@@ -30,6 +39,8 @@ public class AntlrGrammarService {
 
         CommonTokenStream tokenStream = new CommonTokenStream(lexerInterpreter);
 
+        ParseTree tree = null;
+
         // If a parser grammar exists, parse it
         if (dynamicGrammar.getParserGrammar() != null) {
             ParserInterpreter parserInterpreter = dynamicGrammar.createParserInterpreter(tokenStream);
@@ -40,7 +51,8 @@ public class AntlrGrammarService {
             org.antlr.v4.tool.Rule startRule = dynamicGrammar.getParserGrammar().rules.values().iterator().next();
 
             try {
-                parserInterpreter.parse(startRule.index);
+                tree = parserInterpreter.parse(startRule.index);
+                symbolTableService.updateSymbolTable(tree, dynamicGrammar.getParserGrammar().getRuleNames());
             } catch (Exception e) {
                 // Ignore general exceptions during compilation/parsing as errors are handled by listener
             }
@@ -52,6 +64,6 @@ public class AntlrGrammarService {
         tokenStream.fill(); // Ensure we have all tokens
         List<Token> tokens = tokenStream.getTokens();
 
-        return new ParseResult(tokens, errorListener.getErrors());
+        return new ParseResult(tokens, errorListener.getErrors(), tree);
     }
 }
