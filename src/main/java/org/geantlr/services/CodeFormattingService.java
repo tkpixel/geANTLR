@@ -43,6 +43,9 @@ public class CodeFormattingService {
 
         TokenStreamRewriter rewriter = new TokenStreamRewriter(tokenStream);
 
+        // Ensure that the tokens we are rewriting are fully buffered before walking
+        // tokenStream.fill() was already called, which is good.
+
         ParseTreeWalker walker = new ParseTreeWalker();
         FormatterListener listener = new FormatterListener(rewriter, tokenStream);
         walker.walk(listener, tree);
@@ -51,8 +54,13 @@ public class CodeFormattingService {
 
         // As a generic fallback to fix any LLM output that resulted in weird spacing or formatting
         // that the generic ANTLR tree walker missed, ensure no extra blank lines
-        result = result.replaceAll("\\n\\s*\\n\\s*\\n", "\n\n");
-        return result.trim();
+        if (result != null) {
+            result = result.replaceAll("\\n\\s*\\n\\s*\\n", "\n\n");
+            result = result.trim();
+        } else {
+            result = code;
+        }
+        return result;
     }
 
     private static class FormatterListener implements ParseTreeListener {
@@ -73,15 +81,14 @@ public class CodeFormattingService {
         @Override
         public void visitTerminal(TerminalNode node) {
             Token token = node.getSymbol();
-
-            // Remove previous hidden whitespace tokens (keep comments if they are on a different channel or identifiable, though ANTLR handles this differently per grammar; we'll only delete whitespaces if we can identify them)
-            // For a robust generic formatter, we should look for tokens that consist only of whitespace
             int tokenIndex = token.getTokenIndex();
+
+            if (tokenIndex < 0) return;
+
             java.util.List<Token> hiddenTokens = tokenStream.getHiddenTokensToLeft(tokenIndex);
             if (hiddenTokens != null) {
                 for (Token hidden : hiddenTokens) {
                     if (hidden.getType() != Token.EOF && hidden.getText() != null && hidden.getText().trim().isEmpty()) {
-                        // Avoid deleting tokens if they were already rewritten/deleted to avoid IllegalStateException
                         try {
                             rewriter.delete(hidden);
                         } catch (Exception e) {}
@@ -93,7 +100,7 @@ public class CodeFormattingService {
             if (text == null) return;
 
             if (text.equals("}") || text.equals("]")) {
-                indentLevel--;
+                indentLevel = Math.max(0, indentLevel - 1);
                 rewriter.insertBefore(token, "\n" + getIndentString());
                 needsIndent = false;
             } else if (needsIndent) {
@@ -109,8 +116,7 @@ public class CodeFormattingService {
                 rewriter.insertAfter(token, "\n");
                 needsIndent = true;
             } else if (!text.equals("}") && !text.equals("]")) {
-                // Ensure spaces between normal tokens unless followed by punctuation
-                // Find next non-whitespace hidden token, or next visible token
+                // Determine space formatting for ordinary tokens.
                 Token nextVisibleToken = null;
                 for (int i = tokenIndex + 1; i < tokenStream.size(); i++) {
                     Token t = tokenStream.get(i);
@@ -125,7 +131,10 @@ public class CodeFormattingService {
                     if (nextText != null && !nextText.equals(";") && !nextText.equals(",") &&
                         !nextText.equals(".") && !nextText.equals(")") &&
                         !nextText.equals("]") && !nextText.equals("}")) {
-                        rewriter.insertAfter(token, " ");
+                        // Don't insert space after an opening parenthesis
+                        if (!text.equals("(")) {
+                            rewriter.insertAfter(token, " ");
+                        }
                     }
                 }
             }
