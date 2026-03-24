@@ -23,11 +23,11 @@ public class RuleGenerationService {
         this.mainViewModel = mainViewModel;
     }
 
-    public String generateRule(String naturalLanguagePrompt, String referenceTemplate) {
+    public String generateRule(String naturalLanguagePrompt, String referenceTemplate, String modelName) {
         ChatModel chatModel = dev.langchain4j.model.ollama.OllamaChatModel.builder()
                 .baseUrl("http://localhost:11434")
-                .modelName("qwen2.5-coder:7b")
-                .timeout(Duration.ofMinutes(5))
+                .modelName(modelName)
+                .timeout(Duration.ofMinutes(15))
                 .build();
 
         LangChain4j llmModel = new LangChain4j(chatModel);

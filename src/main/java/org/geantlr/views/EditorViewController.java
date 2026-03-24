@@ -55,6 +55,9 @@ public class EditorViewController {
     @FXML
     private Label templateNameLabel;
 
+    @FXML
+    private javafx.scene.control.ComboBox<String> modelComboBox;
+
     private EditorViewModel viewModel;
     private final TokenHighlightMappingService tokenHighlightMappingService;
 
@@ -88,7 +91,7 @@ public class EditorViewController {
 
         if (generateButton != null && promptTextArea != null && generationProgress != null && experimentalBox != null) {
             generationProgress.visibleProperty().bind(this.viewModel.isGeneratingProperty());
-            generateButton.disableProperty().bind(this.viewModel.isGeneratingProperty());
+            generateButton.disableProperty().bind(this.viewModel.isGeneratingProperty().or(this.viewModel.selectedOllamaModelProperty().isNull()));
             selectTemplateButton.disableProperty().bind(this.viewModel.isGeneratingProperty());
 
             experimentalBox.visibleProperty().bind(this.viewModel.experimentalModeProperty());
@@ -97,6 +100,18 @@ public class EditorViewController {
             templateNameLabel.textProperty().bind(this.viewModel.referenceTemplateNameProperty());
             templateNameLabel.visibleProperty().bind(this.viewModel.referenceTemplateNameProperty().isNotEmpty());
             templateNameLabel.managedProperty().bind(this.viewModel.referenceTemplateNameProperty().isNotEmpty());
+
+            if (modelComboBox != null) {
+                modelComboBox.setItems(this.viewModel.getAvailableOllamaModels());
+                this.viewModel.selectedOllamaModelProperty().bind(modelComboBox.getSelectionModel().selectedItemProperty());
+
+                // Pre-select an item if available once the list is populated
+                this.viewModel.getAvailableOllamaModels().addListener((javafx.collections.ListChangeListener<String>) c -> {
+                    if (!this.viewModel.getAvailableOllamaModels().isEmpty() && modelComboBox.getSelectionModel().isEmpty()) {
+                        javafx.application.Platform.runLater(() -> modelComboBox.getSelectionModel().selectFirst());
+                    }
+                });
+            }
 
             generateButton.setOnAction(e -> {
                 String prompt = promptTextArea.getText();

@@ -41,6 +41,9 @@ public class EditorViewModel {
     private final StringProperty referenceTemplate = new SimpleStringProperty("");
     private final StringProperty referenceTemplateName = new SimpleStringProperty("");
 
+    private final ObservableList<String> availableOllamaModels = FXCollections.observableArrayList();
+    private final ObjectProperty<String> selectedOllamaModel = new SimpleObjectProperty<>();
+
     private boolean isUpdating = false;
     private int currentCaretPosition = 0;
 
@@ -72,6 +75,43 @@ public class EditorViewModel {
         textContent.addListener((obs, oldVal, newVal) -> {
             debounce.playFromStart();
             updateSuggestions();
+        });
+
+        loadAvailableOllamaModels();
+    }
+
+    private void loadAvailableOllamaModels() {
+        CompletableFuture.runAsync(() -> {
+            java.util.List<String> models = new java.util.ArrayList<>();
+            String userHome = System.getProperty("user.home");
+            java.io.File ollamaModelsDir = new java.io.File(userHome, ".ollama/models/manifests/registry.ollama.ai/library");
+
+            if (ollamaModelsDir.exists() && ollamaModelsDir.isDirectory()) {
+                java.io.File[] directories = ollamaModelsDir.listFiles(java.io.File::isDirectory);
+                if (directories != null) {
+                    for (java.io.File modelDir : directories) {
+                        String modelName = modelDir.getName();
+                        java.io.File[] tags = modelDir.listFiles(java.io.File::isFile);
+                        if (tags != null) {
+                            for (java.io.File tag : tags) {
+                                models.add(modelName + ":" + tag.getName());
+                            }
+                        } else {
+                            models.add(modelName);
+                        }
+                    }
+                }
+            }
+
+            // Fallback just in case the directory strategy misses something or changes
+            if (models.isEmpty()) {
+                models.add("qwen2.5-coder:7b");
+                models.add("llama3");
+            }
+
+            Platform.runLater(() -> {
+                availableOllamaModels.setAll(models);
+            });
         });
     }
 
@@ -256,8 +296,16 @@ public class EditorViewModel {
         return referenceTemplateName;
     }
 
+    public ObservableList<String> getAvailableOllamaModels() {
+        return availableOllamaModels;
+    }
+
+    public ObjectProperty<String> selectedOllamaModelProperty() {
+        return selectedOllamaModel;
+    }
+
     public void generateRuleFromText(String naturalLanguagePrompt) {
-        if (isGenerating.get() || naturalLanguagePrompt == null || naturalLanguagePrompt.isBlank()) {
+        if (isGenerating.get() || naturalLanguagePrompt == null || naturalLanguagePrompt.isBlank() || selectedOllamaModel.get() == null) {
             return;
         }
 
@@ -265,11 +313,12 @@ public class EditorViewModel {
 
         // Capture JavaFX properties safely on the UI thread before passing to the background task
         final String templateContent = referenceTemplate.get();
+        final String modelName = selectedOllamaModel.get();
 
         javafx.concurrent.Task<String> generationTask = new javafx.concurrent.Task<>() {
             @Override
             protected String call() throws Exception {
-                return ruleGenerationService.generateRule(naturalLanguagePrompt, templateContent);
+                return ruleGenerationService.generateRule(naturalLanguagePrompt, templateContent, modelName);
             }
         };
 
