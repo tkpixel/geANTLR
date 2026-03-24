@@ -1,0 +1,3 @@
+## 2024-05-20 - [View Controllers Bypassing ViewModels]
+**Learning:** Found a pattern where JavaFX Controllers inject and directly call Micronaut domain services (like `IGrammarLoaderService`), bypassing the ViewModel layer. This breaks MVVM separation of concerns, as the View should only communicate with the ViewModel.
+**Action:** When inspecting controllers, ensure they only inject their respective ViewModels (and context for initial loading if strictly necessary) and delegate all business logic requests and domain service calls to the ViewModel instead.
