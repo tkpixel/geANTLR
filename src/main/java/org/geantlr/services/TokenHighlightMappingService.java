@@ -51,26 +51,28 @@ public class TokenHighlightMappingService {
         }
     }
 
-    public String getCssClass(String symbolicName, int tokenType, org.antlr.v4.runtime.Vocabulary vocabulary) {
+    public String getCssClass(String symbolicName, int tokenType, org.antlr.v4.runtime.Vocabulary vocabulary, String text) {
+        if (text != null && text.startsWith("@")) {
+            return "annotation";
+        }
+
+        // Identify keywords dynamically from vocabulary literal names (e.g., 'REGEL', 'WENN')
+        // Allows Unicode characters like German umlauts and hyphens.
+        if (vocabulary != null) {
+            String literalName = vocabulary.getLiteralName(tokenType);
+            if (literalName != null && literalName.matches("'[A-Za-z_\\u00C0-\\u024F][A-Za-z0-9_\\u00C0-\\u024F-]*'")) {
+                return "keyword";
+            }
+        }
+
         if (symbolicName == null) {
             return null;
-        }
-        if (symbolicName.startsWith("@")) {
-            return "annotation";
         }
 
         // Dynamically identify keywords based on common ANTLR grammar naming conventions
         String upperName = symbolicName.toUpperCase();
         if (upperName.endsWith("_KW") || upperName.endsWith("KEYWORD")) {
             return "keyword";
-        }
-
-        // Identify keywords dynamically from vocabulary literal names (e.g., 'REGEL', 'WENN')
-        if (vocabulary != null) {
-            String literalName = vocabulary.getLiteralName(tokenType);
-            if (literalName != null && literalName.matches("'[A-Za-z_][A-Za-z0-9_]*'")) {
-                return "keyword";
-            }
         }
 
         return switch (upperName) {

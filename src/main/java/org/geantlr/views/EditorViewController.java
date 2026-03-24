@@ -263,7 +263,7 @@ public class EditorViewController {
             @Override
             public RichParagraph createRichParagraph(CodeTextModel model, int paragraphIndex) {
                 String text = model.getPlainText(paragraphIndex);
-                RichParagraph.Builder builder = RichParagraph.builder();
+                RichParagraph.Builder builder = RichParagraph.builder().addSegment(text);
 
                 // Note: ANTLR lines are 1-based, paragraphIndex is 0-based
                 int antlrLine = paragraphIndex + 1;
@@ -273,42 +273,18 @@ public class EditorViewController {
                     var tokenStyles = viewModel.getTokenStylesForLine(antlrLine);
 
                     if (vocab != null && tokenStyles != null && !tokenStyles.isEmpty()) {
-                        // Ensure token styles are sorted by their start index and do not overlap
-                        java.util.List<EditorViewModel.TokenStyle> sortedStyles = new java.util.ArrayList<>(tokenStyles);
-                        sortedStyles.sort(java.util.Comparator.comparingInt(EditorViewModel.TokenStyle::startInLine));
-
-                        int currentIndex = 0;
-                        for (EditorViewModel.TokenStyle style : sortedStyles) {
+                        for (EditorViewModel.TokenStyle style : tokenStyles) {
                             int start = style.startInLine();
                             int end = style.endInLine();
 
-                            // Ensure strict bounds checking to prevent overlap or out-of-order text duplication
-                            if (start >= currentIndex && end <= text.length() && start < end) {
-                                // Add any unstyled text before this token
-                                if (start > currentIndex) {
-                                    builder.addSegment(text.substring(currentIndex, start));
-                                }
-
-                                String cssClass = tokenHighlightMappingService.getCssClass(style.symbolicName(), style.tokenType(), vocab);
-                                String tokenText = text.substring(start, end);
-
+                            // Ensure valid bounds
+                            if (start >= 0 && end <= text.length() && start < end) {
+                                String cssClass = tokenHighlightMappingService.getCssClass(style.symbolicName(), style.tokenType(), vocab, style.text());
                                 if (cssClass != null) {
-                                    builder.addWithStyleNames(tokenText, cssClass);
-                                } else {
-                                    builder.addSegment(tokenText);
+                                    builder.addHighlight(start, end - start, cssClass);
                                 }
-
-                                currentIndex = end;
                             }
                         }
-
-                        // Add any remaining unstyled text at the end of the line
-                        if (currentIndex < text.length()) {
-                            builder.addSegment(text.substring(currentIndex));
-                        }
-                    } else {
-                        // No tokens to style, just add the whole text
-                        builder.addSegment(text);
                     }
 
                     // Check for errors on this line
@@ -327,8 +303,6 @@ public class EditorViewController {
                             }
                         }
                     }
-                } else {
-                    builder.addSegment(text);
                 }
 
                 return builder.build();
