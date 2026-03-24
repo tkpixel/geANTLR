@@ -9,6 +9,13 @@ public class TokenHighlightMappingService {
 
     private final Map<String, String> tokenToCssClassMap = new HashMap<>();
 
+    private static final java.util.Set<String> UNIVERSAL_KEYWORDS = java.util.Set.of(
+        "if", "else", "for", "while", "return", "function", "func", "class", "struct",
+        "import", "package", "public", "private", "protected", "switch", "case", "default",
+        "break", "continue", "const", "var", "let", "type", "interface", "enum",
+        "wahr", "falsch", "true", "false", "null", "nichts", "funktionsaufruf"
+    );
+
     public TokenHighlightMappingService() {
         // Default mappings
         // Strings
@@ -24,6 +31,7 @@ public class TokenHighlightMappingService {
         addMapping("HEX_LITERAL", "number");
         addMapping("OCT_LITERAL", "number");
         addMapping("BINARY_LITERAL", "number");
+        addMapping("DIGIT", "number");
 
         // Comments
         addMapping("COMMENT", "comment");
@@ -67,6 +75,9 @@ public class TokenHighlightMappingService {
             if (text.matches("-?\\d+(\\.\\d+)?")) {
                 return "number";
             }
+            if (UNIVERSAL_KEYWORDS.contains(text.toLowerCase())) {
+                return "keyword";
+            }
         }
 
         // Identify keywords dynamically from vocabulary literal names (e.g., 'REGEL', 'WENN')
@@ -91,11 +102,16 @@ public class TokenHighlightMappingService {
         if (upperName.contains("STRING")) {
             return "string";
         }
-        if (upperName.contains("NUMBER") || upperName.contains("INT") || upperName.contains("FLOAT") || upperName.contains("LITERAL") && (upperName.contains("NUM") || upperName.contains("DEC") || upperName.contains("HEX"))) {
+        if (upperName.contains("NUMBER") || upperName.contains("INT") || upperName.contains("FLOAT") || upperName.contains("DIGIT") || upperName.contains("LITERAL") && (upperName.contains("NUM") || upperName.contains("DEC") || upperName.contains("HEX"))) {
             return "number";
         }
         if (upperName.endsWith("_KW") || upperName.contains("KEYWORD")) {
             return "keyword";
+        }
+        if (upperName.contains("LITERAL")) {
+            // General literal fallback after we checked string/number
+            if (text != null && text.matches("([\"']).*\\1")) return "string";
+            if (text != null && text.matches("-?\\d+(\\.\\d+)?")) return "number";
         }
 
         String mapped = tokenToCssClassMap.get(upperName);
