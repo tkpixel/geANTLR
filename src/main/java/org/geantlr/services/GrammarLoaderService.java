@@ -110,6 +110,7 @@ public class GrammarLoaderService implements IGrammarLoaderService {
         DynamicGrammar dynamicGrammar = new DynamicGrammar(parserGrammar, lexerGrammar);
         dynamicGrammar.setAtn(atn);
         dynamicGrammar.setVocabulary(vocabulary);
+        dynamicGrammar.setRawGrammarText(loadGrammarContent(grammarFile));
 
         // Programmatically initialize interpreters with empty streams
         if (lexerGrammar != null) {

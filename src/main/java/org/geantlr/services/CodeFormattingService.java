@@ -47,7 +47,12 @@ public class CodeFormattingService {
         FormatterListener listener = new FormatterListener(rewriter, tokenStream);
         walker.walk(listener, tree);
 
-        return rewriter.getText();
+        String result = rewriter.getText();
+
+        // As a generic fallback to fix any LLM output that resulted in weird spacing or formatting
+        // that the generic ANTLR tree walker missed, ensure no extra blank lines
+        result = result.replaceAll("\\n\\s*\\n\\s*\\n", "\n\n");
+        return result.trim();
     }
 
     private static class FormatterListener implements ParseTreeListener {
@@ -76,7 +81,10 @@ public class CodeFormattingService {
             if (hiddenTokens != null) {
                 for (Token hidden : hiddenTokens) {
                     if (hidden.getType() != Token.EOF && hidden.getText() != null && hidden.getText().trim().isEmpty()) {
-                        rewriter.delete(hidden);
+                        // Avoid deleting tokens if they were already rewritten/deleted to avoid IllegalStateException
+                        try {
+                            rewriter.delete(hidden);
+                        } catch (Exception e) {}
                     }
                 }
             }

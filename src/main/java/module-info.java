@@ -16,6 +16,14 @@ module org.geantlr {
     requires io.micronaut.core;
     requires io.micronaut.context;
 
+    requires google.adk;
+    requires google.adk.contrib.langchain4j;
+    requires langchain4j.core;
+    requires io.reactivex.rxjava3;
+    requires langchain4j.ollama;
+    requires google.genai;
+    requires java.net.http;
+
     opens org.geantlr to javafx.fxml;
     opens org.geantlr.views to javafx.fxml;
     exports org.geantlr;

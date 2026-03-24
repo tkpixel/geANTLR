@@ -6,6 +6,7 @@
 <?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.HeaderBar?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
@@ -21,16 +22,6 @@
                 </center>
             </HeaderBar>
             <ToolBar>
-                <Button fx:id="themeToggleBtn" text="Toggle Theme" onAction="#toggleTheme">
-                    <graphic>
-                        <FontIcon fx:id="themeIcon" iconLiteral="mdi2m-moon-waning-crescent" iconSize="20"/>
-                    </graphic>
-                </Button>
-                <Button text="Toggle Editors" onAction="#toggleEditors">
-                    <graphic>
-                        <FontIcon iconLiteral="mdi2p-page-layout-body" iconSize="20"/>
-                    </graphic>
-                </Button>
                 <Button text="Load Grammar" onAction="#loadGrammar">
                     <graphic>
                         <FontIcon iconLiteral="mdi2f-file-code-outline" iconSize="20"/>
@@ -44,6 +35,25 @@
                 <Button text="Clear Import Dirs" onAction="#clearImportDirectories">
                     <graphic>
                         <FontIcon iconLiteral="mdi2f-folder-remove-outline" iconSize="20"/>
+                    </graphic>
+                </Button>
+                <Button fx:id="experimentalModeBtn" text="Experimental Mode" onAction="#toggleExperimentalMode" styleClass="accent">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2f-flask-outline" iconSize="20"/>
+                    </graphic>
+                </Button>
+
+                <!-- Spacer -->
+                <HBox HBox.hgrow="ALWAYS" />
+
+                <Button text="Toggle Editors" onAction="#toggleEditors">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2p-page-layout-body" iconSize="20"/>
+                    </graphic>
+                </Button>
+                <Button fx:id="themeToggleBtn" text="Toggle Theme" onAction="#toggleTheme">
+                    <graphic>
+                        <FontIcon fx:id="themeIcon" iconLiteral="mdi2w-white-balance-sunny" iconSize="20"/>
                     </graphic>
                 </Button>
             </ToolBar>

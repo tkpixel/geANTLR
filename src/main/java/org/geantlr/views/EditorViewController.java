@@ -9,7 +9,15 @@ import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.paint.Color;
 import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.scene.control.Button;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.Label;
+import javafx.stage.FileChooser;
+import java.io.File;
+import java.nio.file.Files;
 import jfx.incubator.scene.control.richtext.CodeArea;
 import jfx.incubator.scene.control.richtext.SyntaxDecorator;
 import jfx.incubator.scene.control.richtext.model.CodeTextModel;
@@ -28,6 +36,27 @@ public class EditorViewController {
 
     @FXML
     private FlowPane suggestionsPane;
+
+    @FXML
+    private VBox experimentalBox;
+
+    @FXML
+    private TextArea promptTextArea;
+
+    @FXML
+    private Button generateButton;
+
+    @FXML
+    private ProgressIndicator generationProgress;
+
+    @FXML
+    private Button selectTemplateButton;
+
+    @FXML
+    private Label templateNameLabel;
+
+    @FXML
+    private javafx.scene.control.ComboBox<String> modelComboBox;
 
     private EditorViewModel viewModel;
     private final TokenHighlightMappingService tokenHighlightMappingService;
@@ -59,6 +88,54 @@ public class EditorViewController {
 
     public void setViewModel(EditorViewModel viewModel) {
         this.viewModel = viewModel;
+
+        if (generateButton != null && promptTextArea != null && generationProgress != null && experimentalBox != null) {
+            generationProgress.visibleProperty().bind(this.viewModel.isGeneratingProperty());
+            generateButton.disableProperty().bind(this.viewModel.isGeneratingProperty().or(this.viewModel.selectedOllamaModelProperty().isNull()));
+            selectTemplateButton.disableProperty().bind(this.viewModel.isGeneratingProperty());
+
+            experimentalBox.visibleProperty().bind(this.viewModel.experimentalModeProperty());
+            experimentalBox.managedProperty().bind(this.viewModel.experimentalModeProperty());
+
+            templateNameLabel.textProperty().bind(this.viewModel.referenceTemplateNameProperty());
+            templateNameLabel.visibleProperty().bind(this.viewModel.referenceTemplateNameProperty().isNotEmpty());
+            templateNameLabel.managedProperty().bind(this.viewModel.referenceTemplateNameProperty().isNotEmpty());
+
+            if (modelComboBox != null) {
+                modelComboBox.setItems(this.viewModel.getAvailableOllamaModels());
+                this.viewModel.selectedOllamaModelProperty().bind(modelComboBox.getSelectionModel().selectedItemProperty());
+
+                // Pre-select an item if available once the list is populated
+                this.viewModel.getAvailableOllamaModels().addListener((javafx.collections.ListChangeListener<String>) c -> {
+                    if (!this.viewModel.getAvailableOllamaModels().isEmpty() && modelComboBox.getSelectionModel().isEmpty()) {
+                        javafx.application.Platform.runLater(() -> modelComboBox.getSelectionModel().selectFirst());
+                    }
+                });
+            }
+
+            generateButton.setOnAction(e -> {
+                String prompt = promptTextArea.getText();
+                if (prompt != null && !prompt.isBlank()) {
+                    this.viewModel.generateRuleFromText(prompt);
+                }
+            });
+
+            selectTemplateButton.setOnAction(e -> {
+                FileChooser fileChooser = new FileChooser();
+                fileChooser.setTitle("Select Template Rule File");
+                File selectedFile = fileChooser.showOpenDialog(selectTemplateButton.getScene().getWindow());
+                if (selectedFile != null) {
+                    try {
+                        String content = Files.readString(selectedFile.toPath());
+                        this.viewModel.referenceTemplateProperty().set(content);
+                        this.viewModel.referenceTemplateNameProperty().set("Template: " + selectedFile.getName());
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            });
+        }
+
         if (editorCodeArea != null) {
             // Unbind previous listeners if necessary (simplified for demo)
 
@@ -100,6 +177,12 @@ public class EditorViewController {
                 if (newVal != null) {
                     try {
                         TextPos currentPos = editorCodeArea.getCaretPosition();
+                        if (currentPos == null) {
+                            int lastParagraph = Math.max(0, editorCodeArea.getModel().size() - 1);
+                            int textLen = editorCodeArea.getModel().getPlainText(lastParagraph).length();
+                            currentPos = TextPos.ofLeading(lastParagraph, textLen);
+                        }
+
                         editorCodeArea.insertText(currentPos, newVal.text() + " ", null);
 
                         int newOffset = currentPos.offset() + newVal.text().length() + 1;

@@ -36,6 +36,14 @@ public class EditorViewModel {
 
     private final ObjectProperty<InsertTextCommand> insertTextCommand = new SimpleObjectProperty<>();
 
+    private final javafx.beans.property.BooleanProperty isGenerating = new javafx.beans.property.SimpleBooleanProperty(false);
+
+    private final StringProperty referenceTemplate = new SimpleStringProperty("");
+    private final StringProperty referenceTemplateName = new SimpleStringProperty("");
+
+    private final ObservableList<String> availableOllamaModels = FXCollections.observableArrayList();
+    private final ObjectProperty<String> selectedOllamaModel = new SimpleObjectProperty<>();
+
     private boolean isUpdating = false;
     private int currentCaretPosition = 0;
 
@@ -43,6 +51,11 @@ public class EditorViewModel {
     private final CodeCompletionService codeCompletionService;
     private final CodeFormattingService codeFormattingService;
     private final MainViewModel mainViewModel;
+    private final org.geantlr.services.RuleGenerationService ruleGenerationService;
+
+    public javafx.beans.property.BooleanProperty experimentalModeProperty() {
+        return mainViewModel.experimentalModeProperty();
+    }
 
     private final PauseTransition debounce = new PauseTransition(Duration.millis(300));
 
@@ -50,17 +63,55 @@ public class EditorViewModel {
     private final ObjectProperty<ReplaceTextCommand> replaceTextCommand = new SimpleObjectProperty<>();
 
     @Inject
-    public EditorViewModel(AntlrGrammarService antlrGrammarService, CodeCompletionService codeCompletionService, CodeFormattingService codeFormattingService, MainViewModel mainViewModel) {
+    public EditorViewModel(AntlrGrammarService antlrGrammarService, CodeCompletionService codeCompletionService, CodeFormattingService codeFormattingService, MainViewModel mainViewModel, org.geantlr.services.RuleGenerationService ruleGenerationService) {
         this.antlrGrammarService = antlrGrammarService;
         this.codeCompletionService = codeCompletionService;
         this.codeFormattingService = codeFormattingService;
         this.mainViewModel = mainViewModel;
+        this.ruleGenerationService = ruleGenerationService;
 
         debounce.setOnFinished(event -> parseText(textContent.get()));
 
         textContent.addListener((obs, oldVal, newVal) -> {
             debounce.playFromStart();
             updateSuggestions();
+        });
+
+        loadAvailableOllamaModels();
+    }
+
+    private void loadAvailableOllamaModels() {
+        CompletableFuture.runAsync(() -> {
+            java.util.List<String> models = new java.util.ArrayList<>();
+            String userHome = System.getProperty("user.home");
+            java.io.File ollamaModelsDir = new java.io.File(userHome, ".ollama/models/manifests/registry.ollama.ai/library");
+
+            if (ollamaModelsDir.exists() && ollamaModelsDir.isDirectory()) {
+                java.io.File[] directories = ollamaModelsDir.listFiles(java.io.File::isDirectory);
+                if (directories != null) {
+                    for (java.io.File modelDir : directories) {
+                        String modelName = modelDir.getName();
+                        java.io.File[] tags = modelDir.listFiles(java.io.File::isFile);
+                        if (tags != null) {
+                            for (java.io.File tag : tags) {
+                                models.add(modelName + ":" + tag.getName());
+                            }
+                        } else {
+                            models.add(modelName);
+                        }
+                    }
+                }
+            }
+
+            // Fallback just in case the directory strategy misses something or changes
+            if (models.isEmpty()) {
+                models.add("qwen2.5-coder:7b");
+                models.add("llama3");
+            }
+
+            Platform.runLater(() -> {
+                availableOllamaModels.setAll(models);
+            });
         });
     }
 
@@ -172,6 +223,14 @@ public class EditorViewModel {
         return replaceTextCommand;
     }
 
+    public javafx.beans.property.BooleanProperty isGeneratingProperty() {
+        return isGenerating;
+    }
+
+    public boolean isGenerating() {
+        return isGenerating.get();
+    }
+
     public void clearReplaceTextCommand() {
         replaceTextCommand.set(null);
     }
@@ -227,5 +286,59 @@ public class EditorViewModel {
         int caretPosition = this.currentCaretPosition;
         CompletableFuture.supplyAsync(() -> codeCompletionService.getSuggestedTokens(grammar, text, caretPosition))
             .thenAccept(suggestions -> Platform.runLater(() -> suggestedTokens.setAll(suggestions)));
+    }
+
+    public StringProperty referenceTemplateProperty() {
+        return referenceTemplate;
+    }
+
+    public StringProperty referenceTemplateNameProperty() {
+        return referenceTemplateName;
+    }
+
+    public ObservableList<String> getAvailableOllamaModels() {
+        return availableOllamaModels;
+    }
+
+    public ObjectProperty<String> selectedOllamaModelProperty() {
+        return selectedOllamaModel;
+    }
+
+    public void generateRuleFromText(String naturalLanguagePrompt) {
+        if (isGenerating.get() || naturalLanguagePrompt == null || naturalLanguagePrompt.isBlank() || selectedOllamaModel.get() == null) {
+            return;
+        }
+
+        isGenerating.set(true);
+
+        // Capture JavaFX properties safely on the UI thread before passing to the background task
+        final String templateContent = referenceTemplate.get();
+        final String modelName = selectedOllamaModel.get();
+
+        javafx.concurrent.Task<String> generationTask = new javafx.concurrent.Task<>() {
+            @Override
+            protected String call() throws Exception {
+                return ruleGenerationService.generateRule(naturalLanguagePrompt, templateContent, modelName);
+            }
+        };
+
+        generationTask.setOnSucceeded(event -> {
+            isGenerating.set(false);
+            String result = generationTask.getValue();
+            if (result != null && !result.isEmpty()) {
+                setUpdating(true);
+                insertTextCommand.set(new InsertTextCommand(result));
+            }
+        });
+
+        generationTask.setOnFailed(event -> {
+            isGenerating.set(false);
+            Throwable e = generationTask.getException();
+            if (e != null) {
+                e.printStackTrace();
+            }
+        });
+
+        new Thread(generationTask).start();
     }
 }
