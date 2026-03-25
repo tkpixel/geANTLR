@@ -145,12 +145,10 @@ public class EditorViewModel {
         if (tokenList == null || vocab == null) return styles;
 
         for (Token token : tokenList) {
-            String symbolicName = vocab.getSymbolicName(token.getType());
-            String literalName = vocab.getLiteralName(token.getType());
-            if (symbolicName == null && literalName == null) continue;
-
             String text = token.getText();
             if (text == null) continue;
+
+            String symbolicName = vocab.getSymbolicName(token.getType());
 
             int startLine = token.getLine();
             int startCharPos = token.getCharPositionInLine();

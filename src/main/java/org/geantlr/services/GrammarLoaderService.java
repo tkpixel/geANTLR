@@ -81,22 +81,42 @@ public class GrammarLoaderService implements IGrammarLoaderService {
             tool.outputDirectory = parserFile.getParentFile().getAbsolutePath();
         }
 
-        LexerGrammar explicitLexerGrammar = null;
+        LexerGrammar lexerGrammar = null;
+        Grammar parserGrammar = null;
 
-        // Process explicit lexer if provided
+        String rawGrammarText = loadGrammarContent(parserFile);
+
+        // Process explicit split grammars via In-Memory Merge
         if (lexerFile != null && lexerFile.exists()) {
-            Tool lexerTool = new Tool();
-            lexerTool.libDirectory = importDir != null ? importDir.getAbsolutePath() : lexerFile.getParentFile().getAbsolutePath();
-            lexerTool.outputDirectory = lexerTool.libDirectory;
-            Grammar lexerG = lexerTool.loadGrammar(lexerFile.getAbsolutePath());
-            if (lexerG instanceof LexerGrammar) {
-                lexerTool.process(lexerG, true);
-                explicitLexerGrammar = (LexerGrammar) lexerG;
+            String lexerText = loadGrammarContent(lexerFile);
+            String parserText = rawGrammarText;
+
+            // Remove header declarations
+            lexerText = lexerText.replaceAll("(?i)lexer\\s+grammar\\s+[a-zA-Z0-9_]+\\s*;", "");
+            parserText = parserText.replaceAll("(?i)parser\\s+grammar\\s+[a-zA-Z0-9_]+\\s*;", "");
+
+            // Remove options { tokenVocab=X; }
+            parserText = parserText.replaceAll("(?s)options\\s*\\{[^}]*?tokenVocab\\s*=\\s*[a-zA-Z0-9_]+\\s*;[^}]*?\\}", "");
+
+            // Just in case it was the only option, clean up empty options blocks
+            parserText = parserText.replaceAll("(?s)options\\s*\\{\\s*\\}", "");
+
+            String combinedText = "grammar CombinedGrammar;\n" + parserText + "\n" + lexerText;
+
+            // Create in-memory combined grammar
+            parserGrammar = new Grammar(combinedText);
+            tool.process(parserGrammar, false);
+
+            if (parserGrammar.isCombined()) {
+                lexerGrammar = parserGrammar.implicitLexer;
             }
+
+            // The raw text displayed in the editor should ideally be the combined text
+            // so line numbers match up for errors.
+            rawGrammarText = combinedText;
         } else {
-            // Attempt to resolve implicitly like before
-            String content = loadGrammarContent(parserFile);
-            java.util.regex.Matcher m = java.util.regex.Pattern.compile("tokenVocab\\s*=\\s*([a-zA-Z0-9_]+)").matcher(content);
+            // Attempt to resolve implicitly like before if only parser was provided
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("tokenVocab\\s*=\\s*([a-zA-Z0-9_]+)").matcher(rawGrammarText);
             if (m.find()) {
                 String lexerName = m.group(1);
                 File inferredLexer = new File(parserFile.getParentFile(), lexerName + ".g4");
@@ -116,33 +136,44 @@ public class GrammarLoaderService implements IGrammarLoaderService {
                 }
 
                 if (inferredLexer.exists()) {
-                    Tool lexerTool = new Tool();
-                    lexerTool.libDirectory = inferredLexer.getParentFile().getAbsolutePath();
-                    lexerTool.outputDirectory = lexerTool.libDirectory;
-                    Grammar lexerG = lexerTool.loadGrammar(inferredLexer.getAbsolutePath());
-                    if (lexerG instanceof LexerGrammar) {
-                        lexerTool.process(lexerG, true);
-                        explicitLexerGrammar = (LexerGrammar) lexerG;
+                    String lexerText = loadGrammarContent(inferredLexer);
+                    String parserText = rawGrammarText;
+
+                    lexerText = lexerText.replaceAll("(?i)lexer\\s+grammar\\s+[a-zA-Z0-9_]+\\s*;", "");
+                    parserText = parserText.replaceAll("(?i)parser\\s+grammar\\s+[a-zA-Z0-9_]+\\s*;", "");
+                    parserText = parserText.replaceAll("(?s)options\\s*\\{[^}]*?tokenVocab\\s*=\\s*[a-zA-Z0-9_]+\\s*;[^}]*?\\}", "");
+                    parserText = parserText.replaceAll("(?s)options\\s*\\{\\s*\\}", "");
+
+                    String combinedText = "grammar CombinedGrammar;\n" + parserText + "\n" + lexerText;
+
+                    parserGrammar = new Grammar(combinedText);
+                    tool.process(parserGrammar, false);
+
+                    if (parserGrammar.isCombined()) {
+                        lexerGrammar = parserGrammar.implicitLexer;
                     }
+                    rawGrammarText = combinedText;
+                } else {
+                    // Fallback to strict load if lexer not found
+                    parserGrammar = tool.loadGrammar(parserFile.getAbsolutePath());
+                    if (parserGrammar != null && parserGrammar.isCombined()) {
+                        lexerGrammar = parserGrammar.implicitLexer;
+                    }
+                }
+            } else {
+                // Not split, load standard
+                parserGrammar = tool.loadGrammar(parserFile.getAbsolutePath());
+                if (parserGrammar != null && parserGrammar.isCombined()) {
+                    lexerGrammar = parserGrammar.implicitLexer;
+                } else if (parserGrammar instanceof LexerGrammar) {
+                    lexerGrammar = (LexerGrammar) parserGrammar;
+                    parserGrammar = null;
                 }
             }
         }
 
-        Grammar parserGrammar = tool.loadGrammar(parserFile.getAbsolutePath());
-
-        if (parserGrammar == null) {
+        if (parserGrammar == null && lexerGrammar == null) {
             throw new IllegalStateException("Failed to load parser grammar from " + parserFile.getName());
-        }
-
-        LexerGrammar lexerGrammar = explicitLexerGrammar;
-        if (parserGrammar.isCombined()) {
-            lexerGrammar = parserGrammar.implicitLexer;
-            if (lexerGrammar == null) {
-                throw new IllegalStateException("Combined grammar loaded, but implicit lexer is null.");
-            }
-        } else if (parserGrammar instanceof LexerGrammar) {
-            lexerGrammar = (LexerGrammar) parserGrammar;
-            parserGrammar = null;
         }
 
         org.antlr.v4.runtime.atn.ATN atn = null;
@@ -159,7 +190,7 @@ public class GrammarLoaderService implements IGrammarLoaderService {
         DynamicGrammar dynamicGrammar = new DynamicGrammar(parserGrammar, lexerGrammar);
         dynamicGrammar.setAtn(atn);
         dynamicGrammar.setVocabulary(vocabulary);
-        dynamicGrammar.setRawGrammarText(loadGrammarContent(parserFile));
+        dynamicGrammar.setRawGrammarText(rawGrammarText);
 
         if (lexerGrammar != null) {
             org.antlr.v4.runtime.CharStream emptyInput = org.antlr.v4.runtime.CharStreams.fromString("");

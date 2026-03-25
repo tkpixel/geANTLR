@@ -9,127 +9,71 @@ public class TokenHighlightMappingService {
 
     private final Map<String, String> tokenToCssClassMap = new HashMap<>();
 
-    private static final java.util.Set<String> UNIVERSAL_KEYWORDS = java.util.Set.of(
-        "if", "else", "for", "while", "return", "function", "func", "class", "struct",
-        "import", "package", "public", "private", "protected", "switch", "case", "default",
-        "break", "continue", "const", "var", "let", "type", "interface", "enum",
-        "wahr", "falsch", "true", "false", "null", "nichts", "funktionsaufruf"
-    );
+    private final Map<Integer, String> cachedTokenClassMapping = new HashMap<>();
+    private org.antlr.v4.runtime.Vocabulary activeVocabulary;
 
     public TokenHighlightMappingService() {
-        // Default mappings
-        // Strings
-        addMapping("STRING", "string");
-        addMapping("STRING_LITERAL", "string");
-
-        // Numbers
-        addMapping("INT", "number");
-        addMapping("NUMBER", "number");
-        addMapping("FLOAT", "number");
-        addMapping("DOUBLE", "number");
-        addMapping("DECIMAL_LITERAL", "number");
-        addMapping("HEX_LITERAL", "number");
-        addMapping("OCT_LITERAL", "number");
-        addMapping("BINARY_LITERAL", "number");
-        addMapping("DIGIT", "number");
-
-        // Comments
-        addMapping("COMMENT", "comment");
-        addMapping("LINE_COMMENT", "comment");
-        addMapping("BLOCK_COMMENT", "comment");
-
-        // Identifiers
-        addMapping("IDENTIFIER", "identifier");
-        addMapping("ID", "identifier");
-
-        // Keywords / Booleans
-        addMapping("KEYWORD", "keyword");
-        addMapping("BOOLEAN", "keyword");
-        addMapping("TRUE", "keyword");
-        addMapping("FALSE", "keyword");
-        addMapping("NULL", "keyword");
-
-        // Operators
-        addMapping("OPERATOR", "operator");
     }
 
-    public void addMapping(String symbolicName, String cssClass) {
-        if (symbolicName != null && cssClass != null) {
-            tokenToCssClassMap.put(symbolicName.toUpperCase(), cssClass);
-        }
-    }
+    public void buildVocabularyMapping(org.antlr.v4.runtime.Vocabulary vocabulary) {
+        this.activeVocabulary = vocabulary;
+        cachedTokenClassMapping.clear();
 
-    public String getCssClass(String symbolicName, int tokenType, org.antlr.v4.runtime.Vocabulary vocabulary, String text) {
-        if (text != null && text.startsWith("@")) {
-            return "annotation";
+        if (vocabulary == null) {
+            return;
         }
 
-        // Text-based heuristics
-        if (text != null) {
-            if (text.startsWith("//") || text.startsWith("/*") || text.startsWith("#")) {
-                return "comment";
-            }
-            if (text.matches("([\"']).*\\1")) {
-                return "string";
-            }
-            if (text.matches("-?\\d+(\\.\\d+)?")) {
-                return "number";
-            }
-            if (UNIVERSAL_KEYWORDS.contains(text.toLowerCase())) {
-                return "keyword";
-            }
-        }
+        int maxTokenType = vocabulary.getMaxTokenType();
+        for (int id = 1; id <= maxTokenType; id++) {
+            String cssClass = null;
 
-        // Identify keywords dynamically from vocabulary literal names (e.g., 'REGEL', 'WENN')
-        // Allows Unicode characters like German umlauts and hyphens.
-        if (vocabulary != null) {
-            String literalName = vocabulary.getLiteralName(tokenType);
+            // Schritt A: Keyword & Operator Erkennung (Literal Name)
+            String literalName = vocabulary.getLiteralName(id);
             if (literalName != null) {
+                // Bereinigungslogik
                 String cleanLiteral = literalName.replaceAll("^'|'$", "");
-                if (cleanLiteral.matches("^[A-Za-z_\\u00C0-\\u024F][A-Za-z0-9_\\u00C0-\\u024F-]*$")) {
-                    return "keyword";
+
+                // Regex für Keywords: Nur Buchstaben, Ziffern, Unterstriche, beginnt mit Buchstabe
+                if (cleanLiteral.matches("^[a-zA-Z_][a-zA-Z0-9_]*$")) {
+                    cssClass = "keyword";
+                }
+                // Wenn nicht keyword, aber Symbole vorhanden sind (Operator)
+                else if (cleanLiteral.matches("^[^a-zA-Z0-9_\\s]+$")) {
+                    cssClass = "operator";
                 }
             }
-        }
 
-        if (symbolicName == null) {
-            return null;
-        }
-
-        // Dynamically identify keywords based on common ANTLR grammar naming conventions
-        String upperName = symbolicName.toUpperCase();
-
-        if (upperName.endsWith("_KW") || upperName.endsWith("_KEYWORD")) {
-            return "keyword";
-        }
-        if (upperName.contains("COMMENT")) {
-            return "comment";
-        }
-        if (upperName.contains("STRING") || upperName.contains("LITERAL")) {
-            // Check specific types of literals if possible
-            if (upperName.contains("NUMBER") || upperName.contains("INT") || upperName.contains("FLOAT") || upperName.contains("DIGIT") || upperName.contains("DEC") || upperName.contains("HEX")) {
-                return "number";
+            // Schritt B: Erkennung komplexer Tokens (Symbolic Name)
+            if (cssClass == null) {
+                String symbolicName = vocabulary.getSymbolicName(id);
+                if (symbolicName != null) {
+                    String name = symbolicName.toUpperCase();
+                    if (name.endsWith("_KW") || name.endsWith("_KEYWORD")) {
+                        cssClass = "keyword";
+                    } else if (name.contains("COMMENT")) {
+                        cssClass = "comment";
+                    } else if (name.contains("STRING") || name.contains("LITERAL")) {
+                        // Da String/Literal oft auch für Numbers missbraucht wird, erst Number checken
+                        if (name.contains("INT") || name.contains("FLOAT") || name.contains("NUM") || name.contains("DIGIT")) {
+                            cssClass = "number";
+                        } else {
+                            cssClass = "string";
+                        }
+                    } else if (name.contains("INT") || name.contains("FLOAT") || name.contains("NUM") || name.contains("DIGIT")) {
+                        cssClass = "number";
+                    }
+                }
             }
-            if (text != null && text.matches("-?\\d+(\\.\\d+)?")) {
-                return "number"; // Fallback for numeric literals that lack clear symbolic names
-            }
-            return "string"; // Defaults to string for other literals
-        }
-        if (upperName.contains("NUMBER") || upperName.contains("INT") || upperName.contains("FLOAT") || upperName.contains("DIGIT")) {
-            return "number";
-        }
-        if (upperName.contains("KEYWORD")) {
-            return "keyword";
-        }
 
-        String mapped = tokenToCssClassMap.get(upperName);
-        if (mapped != null) {
-            return mapped;
+            // Schritt C: Fallback null in the Map
+            cachedTokenClassMapping.put(id, cssClass);
         }
+    }
 
-        return switch (upperName) {
-            case "GRAMMAR", "PARSER", "LEXER", "RETURNS", "LOCALS", "IMPORT", "FRAGMENT", "OPTIONS", "MODE", "CATCH", "FINALLY", "THROWS", "CHANNELS" -> "keyword";
-            default -> null;
-        };
+    public String getCssClass(int tokenType) {
+        if (cachedTokenClassMapping.containsKey(tokenType)) {
+            return cachedTokenClassMapping.get(tokenType);
+        }
+        return null; // Standard fallback (no style assigned)
     }
 }

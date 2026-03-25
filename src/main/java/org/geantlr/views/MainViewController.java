@@ -159,6 +159,7 @@ public class MainViewController {
 
                 DynamicGrammar dynamicGrammar = grammarLoaderService.loadDynamicGrammar(importDir, lexerFile, parserFile);
                 viewModel.setDynamicGrammar(dynamicGrammar);
+                context.getBean(org.geantlr.services.TokenHighlightMappingService.class).buildVocabularyMapping(dynamicGrammar.getVocabulary());
 
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
                 alert.setTitle("Grammar Loaded");

@@ -289,8 +289,12 @@ public class EditorViewController {
                                     builder.addSegment(text.substring(currentIndex, start));
                                 }
 
-                                String cssClass = tokenHighlightMappingService.getCssClass(style.symbolicName(), style.tokenType(), vocab, style.text());
+                                String cssClass = tokenHighlightMappingService.getCssClass(style.tokenType());
                                 String tokenText = text.substring(start, end);
+
+                                if (tokenText.startsWith("@")) {
+                                    cssClass = "annotation";
+                                }
 
                                 if (cssClass != null) {
                                     builder.addWithStyleNames(tokenText, cssClass);
