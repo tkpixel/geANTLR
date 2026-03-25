@@ -133,53 +133,31 @@ public class MainViewController {
     }
 
     @FXML
-    private void addImportDirectory() {
-        DirectoryChooser dirChooser = new DirectoryChooser();
-        dirChooser.setTitle("Select Import Directory for Grammars");
-
-        Stage stage = (Stage) editorSplitPane.getScene().getWindow();
-        File selectedDir = dirChooser.showDialog(stage);
-
-        if (selectedDir != null) {
-            try {
-                viewModel.addImportDirectory(selectedDir);
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("Import Directory Added");
-                alert.setHeaderText("Success");
-                alert.setContentText("Added directory '" + selectedDir.getName() + "' for resolving imported grammars.\nTotal import directories: " + viewModel.getImportDirectoriesCount());
-                alert.showAndWait();
-            } catch (Exception e) {
-                Alert alert = new Alert(Alert.AlertType.ERROR);
-                alert.setTitle("Error Adding Directory");
-                alert.setHeaderText("Failed to add import directory");
-                alert.setContentText(e.getMessage());
-                alert.showAndWait();
-            }
-        }
-    }
-
-    @FXML
-    private void clearImportDirectories() {
-        viewModel.clearImportDirectories();
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Import Directories Cleared");
-        alert.setHeaderText("Success");
-        alert.setContentText("All custom import directories have been cleared.");
-        alert.showAndWait();
-    }
-
-    @FXML
     private void loadGrammar() {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Select ANTLR Grammar File");
-        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("ANTLR Grammar (*.g4)", "*.g4"));
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/geantlr/views/LoadGrammarDialog.fxml"));
+            loader.setControllerFactory(context.getBean(FxmlControllerFactory.class));
+            javafx.scene.Parent root = loader.load();
+            LoadGrammarDialogController controller = loader.getController();
 
-        Stage stage = (Stage) editorSplitPane.getScene().getWindow();
-        File selectedFile = fileChooser.showOpenDialog(stage);
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle("Load Split Grammars");
+            dialogStage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+            dialogStage.initOwner(editorSplitPane.getScene().getWindow());
+            javafx.scene.Scene scene = new javafx.scene.Scene(root);
+            dialogStage.setScene(scene);
+            dialogStage.showAndWait();
 
-        if (selectedFile != null) {
-            try {
-                DynamicGrammar dynamicGrammar = viewModel.loadDynamicGrammar(selectedFile);
+            if (controller.isLoadConfirmed()) {
+                File importDir = controller.getImportDir();
+                File lexerFile = controller.getLexerFile();
+                File parserFile = controller.getParserFile();
+
+                if (importDir != null) {
+                    grammarLoaderService.addImportDirectory(importDir);
+                }
+
+                DynamicGrammar dynamicGrammar = grammarLoaderService.loadDynamicGrammar(importDir, lexerFile, parserFile);
                 viewModel.setDynamicGrammar(dynamicGrammar);
 
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -189,17 +167,17 @@ public class MainViewController {
                     ? "Parser rules: " + dynamicGrammar.getParserGrammar().rules.size()
                     : "Lexer rules only";
 
-                alert.setContentText("Grammar '" + selectedFile.getName() + "' loaded and compiled successfully.\n" +
+                alert.setContentText("Grammar '" + parserFile.getName() + "' loaded and compiled successfully.\n" +
                                      rulesMsg);
                 alert.showAndWait();
-            } catch (Exception e) {
-                Alert alert = new Alert(Alert.AlertType.ERROR);
-                alert.setTitle("Error Loading Grammar");
-                alert.setHeaderText("Failed to load or compile grammar");
-                alert.setContentText(e.getMessage());
-                e.printStackTrace();
-                alert.showAndWait();
             }
+        } catch (Exception e) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Error Loading Grammar");
+            alert.setHeaderText("Failed to load or compile grammar");
+            alert.setContentText(e.getMessage());
+            e.printStackTrace();
+            alert.showAndWait();
         }
     }
 

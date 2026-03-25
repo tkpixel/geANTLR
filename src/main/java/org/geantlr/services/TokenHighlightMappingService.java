@@ -84,8 +84,11 @@ public class TokenHighlightMappingService {
         // Allows Unicode characters like German umlauts and hyphens.
         if (vocabulary != null) {
             String literalName = vocabulary.getLiteralName(tokenType);
-            if (literalName != null && literalName.matches("'[A-Za-z_\\u00C0-\\u024F][A-Za-z0-9_\\u00C0-\\u024F-]*'")) {
-                return "keyword";
+            if (literalName != null) {
+                String cleanLiteral = literalName.replaceAll("^'|'$", "");
+                if (cleanLiteral.matches("^[A-Za-z_\\u00C0-\\u024F][A-Za-z0-9_\\u00C0-\\u024F-]*$")) {
+                    return "keyword";
+                }
             }
         }
 
@@ -96,22 +99,27 @@ public class TokenHighlightMappingService {
         // Dynamically identify keywords based on common ANTLR grammar naming conventions
         String upperName = symbolicName.toUpperCase();
 
+        if (upperName.endsWith("_KW") || upperName.endsWith("_KEYWORD")) {
+            return "keyword";
+        }
         if (upperName.contains("COMMENT")) {
             return "comment";
         }
-        if (upperName.contains("STRING")) {
-            return "string";
+        if (upperName.contains("STRING") || upperName.contains("LITERAL")) {
+            // Check specific types of literals if possible
+            if (upperName.contains("NUMBER") || upperName.contains("INT") || upperName.contains("FLOAT") || upperName.contains("DIGIT") || upperName.contains("DEC") || upperName.contains("HEX")) {
+                return "number";
+            }
+            if (text != null && text.matches("-?\\d+(\\.\\d+)?")) {
+                return "number"; // Fallback for numeric literals that lack clear symbolic names
+            }
+            return "string"; // Defaults to string for other literals
         }
-        if (upperName.contains("NUMBER") || upperName.contains("INT") || upperName.contains("FLOAT") || upperName.contains("DIGIT") || upperName.contains("LITERAL") && (upperName.contains("NUM") || upperName.contains("DEC") || upperName.contains("HEX"))) {
+        if (upperName.contains("NUMBER") || upperName.contains("INT") || upperName.contains("FLOAT") || upperName.contains("DIGIT")) {
             return "number";
         }
-        if (upperName.endsWith("_KW") || upperName.contains("KEYWORD")) {
+        if (upperName.contains("KEYWORD")) {
             return "keyword";
-        }
-        if (upperName.contains("LITERAL")) {
-            // General literal fallback after we checked string/number
-            if (text != null && text.matches("([\"']).*\\1")) return "string";
-            if (text != null && text.matches("-?\\d+(\\.\\d+)?")) return "number";
         }
 
         String mapped = tokenToCssClassMap.get(upperName);
