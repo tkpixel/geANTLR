@@ -72,6 +72,39 @@ public class GrammarLoaderService implements IGrammarLoaderService {
 
         // Ensure the directory of the file is in the library path so it can resolve imports if needed locally
         tool.libDirectory = grammarFile.getParentFile().getAbsolutePath();
+        tool.outputDirectory = grammarFile.getParentFile().getAbsolutePath();
+
+        LexerGrammar lexerGrammar = null;
+
+        // Check if this grammar explicitly depends on an external tokenVocab (i.e. separate lexer and parser)
+        String content = loadGrammarContent(grammarFile);
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("tokenVocab\\s*=\\s*([a-zA-Z0-9_]+)").matcher(content);
+        if (m.find()) {
+            String lexerName = m.group(1);
+            File lexerFile = new File(grammarFile.getParentFile(), lexerName + ".g4");
+
+            // Search in import directories if not in the same folder
+            if (!lexerFile.exists()) {
+                for (File dir : importDirectories) {
+                    File candidate = new File(dir, lexerName + ".g4");
+                    if (candidate.exists()) {
+                        lexerFile = candidate;
+                        break;
+                    }
+                }
+            }
+
+            if (lexerFile.exists()) {
+                Tool lexerTool = new Tool();
+                lexerTool.libDirectory = lexerFile.getParentFile().getAbsolutePath();
+                lexerTool.outputDirectory = lexerFile.getParentFile().getAbsolutePath();
+                Grammar lexerG = lexerTool.loadGrammar(lexerFile.getAbsolutePath());
+                if (lexerG instanceof LexerGrammar) {
+                    lexerTool.process(lexerG, false); // Generates the .tokens file
+                    lexerGrammar = (LexerGrammar) lexerG;
+                }
+            }
+        }
 
         // 2. Instantiate Grammar object.
         // It reads and parses the .g4 file to construct AST and rules.
@@ -82,8 +115,7 @@ public class GrammarLoaderService implements IGrammarLoaderService {
             throw new IllegalStateException("Failed to load parser grammar from " + grammarFile.getName());
         }
 
-        // 3. Extract the implicit Lexer grammar
-        LexerGrammar lexerGrammar = null;
+        // 3. Extract the implicit Lexer grammar if combined
         if (parserGrammar.isCombined()) {
             lexerGrammar = parserGrammar.implicitLexer;
             if (lexerGrammar == null) {
