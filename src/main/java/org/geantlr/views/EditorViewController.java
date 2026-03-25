@@ -198,18 +198,14 @@ public class EditorViewController {
                 }
             });
 
-            // Listen to error changes
-            this.viewModel.getErrors().addListener((ListChangeListener<SyntaxError>) c -> {
-                // Trigger a full redraw to apply syntax decorations
+            // ⚡ Bolt Optimization: Replace ListChangeListener with InvalidationListener to avoid
+            // eager and expensive computation of list change differences, since we do a full redraw anyway.
+            javafx.beans.InvalidationListener redrawListener = obs -> {
                 editorCodeArea.setSyntaxDecorator(null);
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
-            });
-
-            // Listen to token changes for highlighting
-            this.viewModel.getTokens().addListener((ListChangeListener<Token>) c -> {
-                editorCodeArea.setSyntaxDecorator(null);
-                editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
-            });
+            };
+            this.viewModel.getErrors().addListener(redrawListener);
+            this.viewModel.getTokens().addListener(redrawListener);
 
             editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
 

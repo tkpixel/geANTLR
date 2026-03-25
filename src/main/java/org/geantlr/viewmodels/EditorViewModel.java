@@ -154,6 +154,16 @@ public class EditorViewModel {
             int startLine = token.getLine();
             int startCharPos = token.getCharPositionInLine();
 
+            // ⚡ Bolt Optimization: Avoid expensive regex String.split allocation for the 99% of tokens that don't span multiple lines
+            if (text.indexOf('\n') == -1) {
+                int endInLine = startCharPos + text.length();
+                if (startCharPos < endInLine) {
+                    styles.computeIfAbsent(startLine, k -> new java.util.ArrayList<>())
+                          .add(new TokenStyle(startCharPos, endInLine, symbolicName));
+                }
+                continue;
+            }
+
             String[] lines = text.split("\r?\n", -1);
 
             for (int i = 0; i < lines.length; i++) {
@@ -339,6 +349,8 @@ public class EditorViewModel {
             }
         });
 
-        new Thread(generationTask).start();
+        // ⚡ Bolt Optimization: Offload blocking LLM generation to a lightweight Java Virtual Thread
+        // instead of an expensive OS Platform Thread
+        Thread.ofVirtual().name("llm-gen").start(generationTask);
     }
 }
