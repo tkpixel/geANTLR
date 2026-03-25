@@ -47,7 +47,6 @@ public class MainViewController {
     private FontIcon themeIcon;
 
     private final MainViewModel viewModel;
-    private final IGrammarLoaderService grammarLoaderService;
     private final ApplicationContext context;
 
     private boolean isDarkMode = true;
@@ -56,9 +55,8 @@ public class MainViewController {
     private final Map<EditorViewModel, Region> editorRegions = new HashMap<>();
 
     @Inject
-    public MainViewController(MainViewModel viewModel, IGrammarLoaderService grammarLoaderService, ApplicationContext context) {
+    public MainViewController(MainViewModel viewModel, ApplicationContext context) {
         this.viewModel = viewModel;
-        this.grammarLoaderService = grammarLoaderService;
         this.context = context;
     }
 
@@ -131,11 +129,11 @@ public class MainViewController {
 
         if (selectedDir != null) {
             try {
-                grammarLoaderService.addImportDirectory(selectedDir);
+                viewModel.addImportDirectory(selectedDir);
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
                 alert.setTitle("Import Directory Added");
                 alert.setHeaderText("Success");
-                alert.setContentText("Added directory '" + selectedDir.getName() + "' for resolving imported grammars.\nTotal import directories: " + grammarLoaderService.getImportDirectories().size());
+                alert.setContentText("Added directory '" + selectedDir.getName() + "' for resolving imported grammars.\nTotal import directories: " + viewModel.getImportDirectoriesCount());
                 alert.showAndWait();
             } catch (Exception e) {
                 Alert alert = new Alert(Alert.AlertType.ERROR);
@@ -149,7 +147,7 @@ public class MainViewController {
 
     @FXML
     private void clearImportDirectories() {
-        grammarLoaderService.clearImportDirectories();
+        viewModel.clearImportDirectories();
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Import Directories Cleared");
         alert.setHeaderText("Success");
@@ -168,7 +166,7 @@ public class MainViewController {
 
         if (selectedFile != null) {
             try {
-                DynamicGrammar dynamicGrammar = grammarLoaderService.loadDynamicGrammar(selectedFile);
+                DynamicGrammar dynamicGrammar = viewModel.loadDynamicGrammar(selectedFile);
                 viewModel.setDynamicGrammar(dynamicGrammar);
 
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
