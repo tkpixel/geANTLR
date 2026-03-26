@@ -48,100 +48,6 @@ public class GrammarLoaderService implements IGrammarLoaderService {
         return Files.readString(grammarFile.toPath());
     }
 
-    private String extractAndRemove(StringBuilder sb, String regex) {
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile(regex).matcher(sb.toString());
-        if (m.find()) {
-            String found = m.group();
-            sb.delete(m.start(), m.end());
-            return found;
-        }
-        return "";
-    }
-
-    private String extractTokensContent(StringBuilder sb) {
-        StringBuilder content = new StringBuilder();
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?s)tokens\\s*\\{([^}]*)\\}").matcher(sb.toString());
-        while (m.find()) {
-            content.append(m.group(1)).append(", ");
-            sb.delete(m.start(), m.end());
-            m = java.util.regex.Pattern.compile("(?s)tokens\\s*\\{([^}]*)\\}").matcher(sb.toString());
-        }
-        return content.toString();
-    }
-
-    private String extractOptionsContent(StringBuilder sb) {
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?s)options\\s*\\{([^}]*)\\}").matcher(sb.toString());
-        if (m.find()) {
-            String content = m.group(1);
-            sb.delete(m.start(), m.end());
-            // Remove tokenVocab
-            content = content.replaceAll("(?i)tokenVocab\\s*=\\s*[a-zA-Z0-9_]+\\s*;", "");
-            if (content.trim().isEmpty()) {
-                return "";
-            }
-            return "options {" + content + "}\n";
-        }
-        return "";
-    }
-
-    private String mergeGrammars(String parserText, String lexerText, String combinedName) {
-        StringBuilder pText = new StringBuilder(parserText);
-        StringBuilder lText = new StringBuilder(lexerText);
-
-        // Remove headers
-        extractAndRemove(pText, "(?i)parser\\s+grammar\\s+[a-zA-Z0-9_]+\\s*;");
-        extractAndRemove(lText, "(?i)lexer\\s+grammar\\s+[a-zA-Z0-9_]+\\s*;");
-
-        // Options
-        String pOptions = extractOptionsContent(pText);
-        extractOptionsContent(lText); // Lexer options are discarded to prevent conflicts
-
-        // Imports
-        String pImports = extractAndRemove(pText, "(?i)import\\s+[a-zA-Z0-9_]+\\s*;");
-        String lImports = extractAndRemove(lText, "(?i)import\\s+[a-zA-Z0-9_]+\\s*;");
-
-        // Tokens
-        String combinedTokensContent = extractTokensContent(pText) + extractTokensContent(lText);
-        String tokensBlock = combinedTokensContent.trim().isEmpty() ? "" : "tokens { " + combinedTokensContent + " }\n";
-
-        // Channels
-        String channelsBlock = extractAndRemove(lText, "(?s)channels\\s*\\{[^}]*\\}");
-
-        // Replace custom channels with their numeric equivalent in the lexer text
-        if (!channelsBlock.isEmpty()) {
-            java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?s)channels\\s*\\{([^}]*)\\}").matcher(channelsBlock);
-            if (m.find()) {
-                String inner = m.group(1);
-                String[] channels = inner.split(",");
-                int channelId = 2; // 0=DEFAULT, 1=HIDDEN
-
-                String lexerString = lText.toString();
-                for (String channel : channels) {
-                    String chName = channel.trim();
-                    if (!chName.isEmpty()) {
-                        // Regex to match -> channel(NAME)
-                        String regex = "->\\s*channel\\s*\\(\\s*" + java.util.regex.Pattern.quote(chName) + "\\s*\\)";
-                        String replacement = "-> channel(" + channelId + ")";
-                        lexerString = lexerString.replaceAll(regex, replacement);
-                        channelId++;
-                    }
-                }
-                lText.setLength(0);
-                lText.append(lexerString);
-            }
-        }
-
-        // Build strictly ordered grammar
-        // Note: channelsBlock is NOT appended, as custom channels are forbidden in combined grammars.
-        return "grammar " + combinedName + ";\n"
-                + pOptions
-                + pImports + "\n"
-                + lImports + "\n"
-                + tokensBlock
-                + pText.toString() + "\n"
-                + lText.toString();
-    }
-
     @Override
     public DynamicGrammar loadDynamicGrammar(File grammarFile) throws Exception {
         return loadDynamicGrammar(grammarFile.getParentFile(), null, grammarFile);
@@ -153,6 +59,7 @@ public class GrammarLoaderService implements IGrammarLoaderService {
             throw new IllegalArgumentException("Invalid parser grammar file provided.");
         }
 
+        // Custom tool to support multiple import directories for dependencies
         Tool tool = new Tool() {
             @Override
             public File getImportedGrammarFile(Grammar g, String fileName) {
@@ -177,31 +84,34 @@ public class GrammarLoaderService implements IGrammarLoaderService {
 
         LexerGrammar lexerGrammar = null;
         Grammar parserGrammar = null;
-
         String rawGrammarText = loadGrammarContent(parserFile);
 
-        // Process explicit split grammars via In-Memory Merge
+        // NATIVE 2-STEP LOAD PROCESS
         if (lexerFile != null && lexerFile.exists()) {
-            String lexerText = loadGrammarContent(lexerFile);
-            String parserText = rawGrammarText;
+            // STEP 1: Process Lexer to generate .tokens file
+            Tool lexerTool = new Tool() {
+                @Override
+                public File getImportedGrammarFile(Grammar g, String fileName) {
+                    return tool.getImportedGrammarFile(g, fileName);
+                }
+            };
+            lexerTool.libDirectory = tool.libDirectory;
+            lexerTool.outputDirectory = tool.outputDirectory; // Needs to write the .tokens file here
 
-            String combinedName = "CombinedGrammar" + System.currentTimeMillis();
-            String combinedText = mergeGrammars(parserText, lexerText, combinedName);
-
-            // Write combined text to a temporary file to let ANTLR Tool process it robustly with full context
-            File tempCombinedFile = new File(parserFile.getParentFile(), combinedName + ".g4");
-            tempCombinedFile.deleteOnExit();
-            Files.writeString(tempCombinedFile.toPath(), combinedText);
-
-            parserGrammar = tool.loadGrammar(tempCombinedFile.getAbsolutePath());
-
-            if (parserGrammar != null && parserGrammar.isCombined()) {
-                lexerGrammar = parserGrammar.implicitLexer;
+            Grammar rootLexer = lexerTool.loadGrammar(lexerFile.getAbsolutePath());
+            if (rootLexer instanceof LexerGrammar) {
+                lexerGrammar = (LexerGrammar) rootLexer;
+                // Critically, process(true) tells the tool to write out the .tokens / .interp files needed by the parser.
+                lexerTool.process(lexerGrammar, true);
+            } else {
+                throw new IllegalStateException("Provided lexer file is not a Lexer grammar.");
             }
 
-            rawGrammarText = combinedText;
+            // STEP 2: Load Parser, which will now automatically find the generated .tokens file in the libDirectory
+            parserGrammar = tool.loadGrammar(parserFile.getAbsolutePath());
+
         } else {
-            // Attempt to resolve implicitly like before if only parser was provided
+            // Implicit resolution logic for when only parser is provided
             java.util.regex.Matcher m = java.util.regex.Pattern.compile("tokenVocab\\s*=\\s*([a-zA-Z0-9_]+)").matcher(rawGrammarText);
             if (m.find()) {
                 String lexerName = m.group(1);
@@ -222,22 +132,24 @@ public class GrammarLoaderService implements IGrammarLoaderService {
                 }
 
                 if (inferredLexer.exists()) {
-                    String lexerText = loadGrammarContent(inferredLexer);
-                    String parserText = rawGrammarText;
+                     // STEP 1: Process inferred Lexer
+                    Tool lexerTool = new Tool() {
+                        @Override
+                        public File getImportedGrammarFile(Grammar g, String fileName) {
+                            return tool.getImportedGrammarFile(g, fileName);
+                        }
+                    };
+                    lexerTool.libDirectory = tool.libDirectory;
+                    lexerTool.outputDirectory = tool.outputDirectory;
 
-                    String combinedName = "CombinedGrammar" + System.currentTimeMillis();
-                    String combinedText = mergeGrammars(parserText, lexerText, combinedName);
-
-                    File tempCombinedFile = new File(parserFile.getParentFile(), combinedName + ".g4");
-                    tempCombinedFile.deleteOnExit();
-                    Files.writeString(tempCombinedFile.toPath(), combinedText);
-
-                    parserGrammar = tool.loadGrammar(tempCombinedFile.getAbsolutePath());
-
-                    if (parserGrammar != null && parserGrammar.isCombined()) {
-                        lexerGrammar = parserGrammar.implicitLexer;
+                    Grammar rootLexer = lexerTool.loadGrammar(inferredLexer.getAbsolutePath());
+                    if (rootLexer instanceof LexerGrammar) {
+                        lexerGrammar = (LexerGrammar) rootLexer;
+                        lexerTool.process(lexerGrammar, true);
                     }
-                    rawGrammarText = combinedText;
+
+                    // STEP 2: Load Parser
+                    parserGrammar = tool.loadGrammar(parserFile.getAbsolutePath());
                 } else {
                     // Fallback to strict load if lexer not found
                     parserGrammar = tool.loadGrammar(parserFile.getAbsolutePath());
