@@ -41,6 +41,9 @@ public class MainViewController {
     private SplitPane editorSplitPane;
 
     @FXML
+    private Button toggleEditorsBtn;
+
+    @FXML
     private Button themeToggleBtn;
 
     @FXML
@@ -63,7 +66,17 @@ public class MainViewController {
     @FXML
     public void initialize() {
         // Use an accent button style if provided by AtlantaFX
-        themeToggleBtn.getStyleClass().addAll("accent");
+        themeToggleBtn.getStyleClass().addAll("accent", atlantafx.base.theme.Styles.BUTTON_ICON);
+        themeToggleBtn.setAccessibleText("Toggle Theme");
+        themeToggleBtn.setAccessibleHelp("Switches between light and dark themes.");
+        themeToggleBtn.setTooltip(new javafx.scene.control.Tooltip("Toggle Theme"));
+
+        if (toggleEditorsBtn != null) {
+            toggleEditorsBtn.getStyleClass().addAll(atlantafx.base.theme.Styles.BUTTON_ICON);
+            toggleEditorsBtn.setAccessibleText("Toggle Editors");
+            toggleEditorsBtn.setAccessibleHelp("Switches between single and split editor views.");
+            toggleEditorsBtn.setTooltip(new javafx.scene.control.Tooltip("Toggle Editors"));
+        }
 
         // Listen to active editors list
         viewModel.getActiveEditors().addListener((ListChangeListener<EditorViewModel>) change -> {

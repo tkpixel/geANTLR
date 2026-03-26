@@ -46,12 +46,12 @@
                 <!-- Spacer -->
                 <HBox HBox.hgrow="ALWAYS" />
 
-                <Button text="Toggle Editors" onAction="#toggleEditors">
+                <Button fx:id="toggleEditorsBtn" onAction="#toggleEditors">
                     <graphic>
                         <FontIcon iconLiteral="mdi2p-page-layout-body" iconSize="20"/>
                     </graphic>
                 </Button>
-                <Button fx:id="themeToggleBtn" text="Toggle Theme" onAction="#toggleTheme">
+                <Button fx:id="themeToggleBtn" onAction="#toggleTheme">
                     <graphic>
                         <FontIcon fx:id="themeIcon" iconLiteral="mdi2w-white-balance-sunny" iconSize="20"/>
                     </graphic>
