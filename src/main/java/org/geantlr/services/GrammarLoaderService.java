@@ -107,13 +107,37 @@ public class GrammarLoaderService implements IGrammarLoaderService {
         // Channels
         String channelsBlock = extractAndRemove(lText, "(?s)channels\\s*\\{[^}]*\\}");
 
+        // Replace custom channels with their numeric equivalent in the lexer text
+        if (!channelsBlock.isEmpty()) {
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?s)channels\\s*\\{([^}]*)\\}").matcher(channelsBlock);
+            if (m.find()) {
+                String inner = m.group(1);
+                String[] channels = inner.split(",");
+                int channelId = 2; // 0=DEFAULT, 1=HIDDEN
+
+                String lexerString = lText.toString();
+                for (String channel : channels) {
+                    String chName = channel.trim();
+                    if (!chName.isEmpty()) {
+                        // Regex to match -> channel(NAME)
+                        String regex = "->\\s*channel\\s*\\(\\s*" + java.util.regex.Pattern.quote(chName) + "\\s*\\)";
+                        String replacement = "-> channel(" + channelId + ")";
+                        lexerString = lexerString.replaceAll(regex, replacement);
+                        channelId++;
+                    }
+                }
+                lText.setLength(0);
+                lText.append(lexerString);
+            }
+        }
+
         // Build strictly ordered grammar
+        // Note: channelsBlock is NOT appended, as custom channels are forbidden in combined grammars.
         return "grammar " + combinedName + ";\n"
                 + pOptions
                 + pImports + "\n"
                 + lImports + "\n"
                 + tokensBlock
-                + channelsBlock + "\n"
                 + pText.toString() + "\n"
                 + lText.toString();
     }
