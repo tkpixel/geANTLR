@@ -48,6 +48,76 @@ public class GrammarLoaderService implements IGrammarLoaderService {
         return Files.readString(grammarFile.toPath());
     }
 
+    private String extractAndRemove(StringBuilder sb, String regex) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile(regex).matcher(sb.toString());
+        if (m.find()) {
+            String found = m.group();
+            sb.delete(m.start(), m.end());
+            return found;
+        }
+        return "";
+    }
+
+    private String extractTokensContent(StringBuilder sb) {
+        StringBuilder content = new StringBuilder();
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?s)tokens\\s*\\{([^}]*)\\}").matcher(sb.toString());
+        while (m.find()) {
+            content.append(m.group(1)).append(", ");
+            sb.delete(m.start(), m.end());
+            m = java.util.regex.Pattern.compile("(?s)tokens\\s*\\{([^}]*)\\}").matcher(sb.toString());
+        }
+        return content.toString();
+    }
+
+    private String extractOptionsContent(StringBuilder sb) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?s)options\\s*\\{([^}]*)\\}").matcher(sb.toString());
+        if (m.find()) {
+            String content = m.group(1);
+            sb.delete(m.start(), m.end());
+            // Remove tokenVocab
+            content = content.replaceAll("(?i)tokenVocab\\s*=\\s*[a-zA-Z0-9_]+\\s*;", "");
+            if (content.trim().isEmpty()) {
+                return "";
+            }
+            return "options {" + content + "}\n";
+        }
+        return "";
+    }
+
+    private String mergeGrammars(String parserText, String lexerText, String combinedName) {
+        StringBuilder pText = new StringBuilder(parserText);
+        StringBuilder lText = new StringBuilder(lexerText);
+
+        // Remove headers
+        extractAndRemove(pText, "(?i)parser\\s+grammar\\s+[a-zA-Z0-9_]+\\s*;");
+        extractAndRemove(lText, "(?i)lexer\\s+grammar\\s+[a-zA-Z0-9_]+\\s*;");
+
+        // Options
+        String pOptions = extractOptionsContent(pText);
+        extractOptionsContent(lText); // Lexer options are discarded to prevent conflicts
+
+        // Imports
+        String pImports = extractAndRemove(pText, "(?i)import\\s+[a-zA-Z0-9_]+\\s*;");
+        String lImports = extractAndRemove(lText, "(?i)import\\s+[a-zA-Z0-9_]+\\s*;");
+
+        // Tokens
+        String combinedTokensContent = extractTokensContent(pText) + extractTokensContent(lText);
+        String tokensBlock = combinedTokensContent.trim().isEmpty() ? "" : "tokens { " + combinedTokensContent + " }\n";
+
+        // Channels
+        String channelsBlock = extractAndRemove(lText, "(?s)channels\\s*\\{[^}]*\\}");
+
+        // Build strictly ordered grammar
+        return "grammar " + combinedName + ";\n"
+                + pOptions
+                + pImports + "\n"
+                + lImports + "\n"
+                + tokensBlock
+                + channelsBlock + "\n"
+                + pText.toString() + "\n"
+                + lText.toString();
+    }
+
     @Override
     public DynamicGrammar loadDynamicGrammar(File grammarFile) throws Exception {
         return loadDynamicGrammar(grammarFile.getParentFile(), null, grammarFile);
@@ -91,19 +161,8 @@ public class GrammarLoaderService implements IGrammarLoaderService {
             String lexerText = loadGrammarContent(lexerFile);
             String parserText = rawGrammarText;
 
-            // Remove header declarations
-            lexerText = lexerText.replaceAll("(?i)lexer\\s+grammar\\s+[a-zA-Z0-9_]+\\s*;", "");
-            parserText = parserText.replaceAll("(?i)parser\\s+grammar\\s+[a-zA-Z0-9_]+\\s*;", "");
-
-            // Remove tokenVocab from parser and any empty options blocks left behind
-            parserText = parserText.replaceAll("(?i)tokenVocab\\s*=\\s*[a-zA-Z0-9_]+\\s*;", "");
-            parserText = parserText.replaceAll("(?s)options\\s*\\{\\s*\\}", "");
-
-            // Remove only the first global options block from the lexer to prevent duplicate options errors
-            lexerText = lexerText.replaceFirst("(?s)options\\s*\\{[^}]*\\}", "");
-
             String combinedName = "CombinedGrammar" + System.currentTimeMillis();
-            String combinedText = "grammar " + combinedName + ";\n" + parserText + "\n" + lexerText;
+            String combinedText = mergeGrammars(parserText, lexerText, combinedName);
 
             // Write combined text to a temporary file to let ANTLR Tool process it robustly with full context
             File tempCombinedFile = new File(parserFile.getParentFile(), combinedName + ".g4");
@@ -142,18 +201,8 @@ public class GrammarLoaderService implements IGrammarLoaderService {
                     String lexerText = loadGrammarContent(inferredLexer);
                     String parserText = rawGrammarText;
 
-                    lexerText = lexerText.replaceAll("(?i)lexer\\s+grammar\\s+[a-zA-Z0-9_]+\\s*;", "");
-                    parserText = parserText.replaceAll("(?i)parser\\s+grammar\\s+[a-zA-Z0-9_]+\\s*;", "");
-
-                    // Remove tokenVocab from parser and any empty options blocks left behind
-                    parserText = parserText.replaceAll("(?i)tokenVocab\\s*=\\s*[a-zA-Z0-9_]+\\s*;", "");
-                    parserText = parserText.replaceAll("(?s)options\\s*\\{\\s*\\}", "");
-
-                    // Remove only the first global options block from the lexer to prevent duplicate options errors
-                    lexerText = lexerText.replaceFirst("(?s)options\\s*\\{[^}]*\\}", "");
-
                     String combinedName = "CombinedGrammar" + System.currentTimeMillis();
-                    String combinedText = "grammar " + combinedName + ";\n" + parserText + "\n" + lexerText;
+                    String combinedText = mergeGrammars(parserText, lexerText, combinedName);
 
                     File tempCombinedFile = new File(parserFile.getParentFile(), combinedName + ".g4");
                     tempCombinedFile.deleteOnExit();
