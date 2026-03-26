@@ -104,16 +104,17 @@ public class GrammarLoaderService implements IGrammarLoaderService {
 
             String combinedText = "grammar CombinedGrammar;\n" + parserText + "\n" + lexerText;
 
-            // Create in-memory combined grammar
-            parserGrammar = new Grammar(combinedText);
-            tool.process(parserGrammar, false);
+            // Write combined text to a temporary file to let ANTLR Tool process it robustly with full context
+            File tempCombinedFile = File.createTempFile("CombinedGrammar", ".g4", parserFile.getParentFile());
+            tempCombinedFile.deleteOnExit();
+            Files.writeString(tempCombinedFile.toPath(), combinedText);
 
-            if (parserGrammar.isCombined()) {
+            parserGrammar = tool.loadGrammar(tempCombinedFile.getAbsolutePath());
+
+            if (parserGrammar != null && parserGrammar.isCombined()) {
                 lexerGrammar = parserGrammar.implicitLexer;
             }
 
-            // The raw text displayed in the editor should ideally be the combined text
-            // so line numbers match up for errors.
             rawGrammarText = combinedText;
         } else {
             // Attempt to resolve implicitly like before if only parser was provided
@@ -152,10 +153,13 @@ public class GrammarLoaderService implements IGrammarLoaderService {
 
                     String combinedText = "grammar CombinedGrammar;\n" + parserText + "\n" + lexerText;
 
-                    parserGrammar = new Grammar(combinedText);
-                    tool.process(parserGrammar, false);
+                    File tempCombinedFile = File.createTempFile("CombinedGrammar", ".g4", parserFile.getParentFile());
+                    tempCombinedFile.deleteOnExit();
+                    Files.writeString(tempCombinedFile.toPath(), combinedText);
 
-                    if (parserGrammar.isCombined()) {
+                    parserGrammar = tool.loadGrammar(tempCombinedFile.getAbsolutePath());
+
+                    if (parserGrammar != null && parserGrammar.isCombined()) {
                         lexerGrammar = parserGrammar.implicitLexer;
                     }
                     rawGrammarText = combinedText;
