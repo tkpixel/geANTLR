@@ -154,16 +154,25 @@ public class EditorViewModel {
             int startLine = token.getLine();
             int startCharPos = token.getCharPositionInLine();
 
-            String[] lines = text.split("\r?\n", -1);
+            // ⚡ Bolt: Fast-path optimization to avoid expensive regex/split for single-line strings
+            if (text.indexOf('\n') == -1) {
+                int endInLine = startCharPos + text.length();
+                if (startCharPos < endInLine) {
+                    styles.computeIfAbsent(startLine, k -> new java.util.ArrayList<>())
+                          .add(new TokenStyle(startCharPos, endInLine, symbolicName));
+                }
+            } else {
+                String[] lines = text.split("\r?\n", -1);
 
-            for (int i = 0; i < lines.length; i++) {
-                int currentLine = startLine + i;
-                int startInLine = (i == 0) ? startCharPos : 0;
-                int endInLine = startInLine + lines[i].length();
+                for (int i = 0; i < lines.length; i++) {
+                    int currentLine = startLine + i;
+                    int startInLine = (i == 0) ? startCharPos : 0;
+                    int endInLine = startInLine + lines[i].length();
 
-                if (startInLine < endInLine) {
-                    styles.computeIfAbsent(currentLine, k -> new java.util.ArrayList<>())
-                          .add(new TokenStyle(startInLine, endInLine, symbolicName));
+                    if (startInLine < endInLine) {
+                        styles.computeIfAbsent(currentLine, k -> new java.util.ArrayList<>())
+                              .add(new TokenStyle(startInLine, endInLine, symbolicName));
+                    }
                 }
             }
         }
@@ -339,6 +348,7 @@ public class EditorViewModel {
             }
         });
 
-        new Thread(generationTask).start();
+        // ⚡ Bolt: Offload blocking I/O from heavy OS threads to Virtual Threads
+        Thread.ofVirtual().start(generationTask);
     }
 }

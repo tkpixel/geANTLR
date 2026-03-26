@@ -198,15 +198,16 @@ public class EditorViewController {
                 }
             });
 
+            // ⚡ Bolt: Use InvalidationListener instead of ListChangeListener to avoid eager difference computation
             // Listen to error changes
-            this.viewModel.getErrors().addListener((ListChangeListener<SyntaxError>) c -> {
+            this.viewModel.getErrors().addListener((javafx.beans.InvalidationListener) obs -> {
                 // Trigger a full redraw to apply syntax decorations
                 editorCodeArea.setSyntaxDecorator(null);
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
             });
 
             // Listen to token changes for highlighting
-            this.viewModel.getTokens().addListener((ListChangeListener<Token>) c -> {
+            this.viewModel.getTokens().addListener((javafx.beans.InvalidationListener) obs -> {
                 editorCodeArea.setSyntaxDecorator(null);
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
             });
