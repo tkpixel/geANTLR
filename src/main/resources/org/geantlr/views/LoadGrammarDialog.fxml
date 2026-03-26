@@ -26,15 +26,7 @@
     </VBox>
 
     <VBox spacing="5">
-        <Label text="2. Load Lexer Grammar (Optional, if split grammar)" />
-        <HBox spacing="10">
-            <TextField fx:id="lexerFileField" editable="false" HBox.hgrow="ALWAYS" promptText="Select *Lexer.g4..." />
-            <Button text="Browse" onAction="#selectLexerFile" />
-        </HBox>
-    </VBox>
-
-    <VBox spacing="5">
-        <Label text="3. Load Parser / Combined Grammar (Required)" />
+        <Label text="2. Load Parser / Combined Grammar (Required)" />
         <HBox spacing="10">
             <TextField fx:id="parserFileField" editable="false" HBox.hgrow="ALWAYS" promptText="Select *Parser.g4 or *.g4..." />
             <Button text="Browse" onAction="#selectParserFile" />

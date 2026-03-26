@@ -50,11 +50,11 @@ public class GrammarLoaderService implements IGrammarLoaderService {
 
     @Override
     public DynamicGrammar loadDynamicGrammar(File grammarFile) throws Exception {
-        return loadDynamicGrammar(grammarFile.getParentFile(), null, grammarFile);
+        return loadDynamicGrammar(grammarFile.getParentFile(), grammarFile);
     }
 
     @Override
-    public DynamicGrammar loadDynamicGrammar(File importDir, File lexerFile, File parserFile) throws Exception {
+    public DynamicGrammar loadDynamicGrammar(File importDir, File parserFile) throws Exception {
         if (parserFile == null || !parserFile.exists() || !parserFile.isFile()) {
             throw new IllegalArgumentException("Invalid parser grammar file provided.");
         }
@@ -87,33 +87,9 @@ public class GrammarLoaderService implements IGrammarLoaderService {
         String rawGrammarText = loadGrammarContent(parserFile);
 
         // NATIVE 2-STEP LOAD PROCESS
-        if (lexerFile != null && lexerFile.exists()) {
-            // STEP 1: Process Lexer to generate .tokens file
-            Tool lexerTool = new Tool() {
-                @Override
-                public File getImportedGrammarFile(Grammar g, String fileName) {
-                    return tool.getImportedGrammarFile(g, fileName);
-                }
-            };
-            lexerTool.libDirectory = tool.libDirectory;
-            lexerTool.outputDirectory = tool.outputDirectory; // Needs to write the .tokens file here
-
-            Grammar rootLexer = lexerTool.loadGrammar(lexerFile.getAbsolutePath());
-            if (rootLexer instanceof LexerGrammar) {
-                lexerGrammar = (LexerGrammar) rootLexer;
-                // Critically, process(true) tells the tool to write out the .tokens / .interp files needed by the parser.
-                lexerTool.process(lexerGrammar, true);
-            } else {
-                throw new IllegalStateException("Provided lexer file is not a Lexer grammar.");
-            }
-
-            // STEP 2: Load Parser, which will now automatically find the generated .tokens file in the libDirectory
-            parserGrammar = tool.loadGrammar(parserFile.getAbsolutePath());
-
-        } else {
-            // Implicit resolution logic for when only parser is provided
-            java.util.regex.Matcher m = java.util.regex.Pattern.compile("tokenVocab\\s*=\\s*([a-zA-Z0-9_]+)").matcher(rawGrammarText);
-            if (m.find()) {
+        // Implicit resolution logic for when only parser is provided
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("tokenVocab\\s*=\\s*([a-zA-Z0-9_]+)").matcher(rawGrammarText);
+        if (m.find()) {
                 String lexerName = m.group(1);
                 File inferredLexer = new File(parserFile.getParentFile(), lexerName + ".g4");
 
@@ -157,15 +133,14 @@ public class GrammarLoaderService implements IGrammarLoaderService {
                         lexerGrammar = parserGrammar.implicitLexer;
                     }
                 }
-            } else {
-                // Not split, load standard
-                parserGrammar = tool.loadGrammar(parserFile.getAbsolutePath());
-                if (parserGrammar != null && parserGrammar.isCombined()) {
-                    lexerGrammar = parserGrammar.implicitLexer;
-                } else if (parserGrammar instanceof LexerGrammar) {
-                    lexerGrammar = (LexerGrammar) parserGrammar;
-                    parserGrammar = null;
-                }
+        } else {
+            // Not split, load standard
+            parserGrammar = tool.loadGrammar(parserFile.getAbsolutePath());
+            if (parserGrammar != null && parserGrammar.isCombined()) {
+                lexerGrammar = parserGrammar.implicitLexer;
+            } else if (parserGrammar instanceof LexerGrammar) {
+                lexerGrammar = (LexerGrammar) parserGrammar;
+                parserGrammar = null;
             }
         }
 

@@ -14,12 +14,10 @@ import java.io.File;
 public class LoadGrammarDialogController {
 
     @FXML private TextField importDirField;
-    @FXML private TextField lexerFileField;
     @FXML private TextField parserFileField;
     @FXML private Button loadBtn;
 
     private File importDir;
-    private File lexerFile;
     private File parserFile;
 
     private boolean loadConfirmed = false;
@@ -45,21 +43,6 @@ public class LoadGrammarDialogController {
         if (selectedDir != null) {
             importDir = selectedDir;
             importDirField.setText(selectedDir.getAbsolutePath());
-        }
-    }
-
-    @FXML
-    private void selectLexerFile() {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Select Lexer Grammar (*Lexer.g4)");
-        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Lexer Grammar (*Lexer.g4, *.g4)", "*.g4"));
-
-        if (importDir != null) fileChooser.setInitialDirectory(importDir);
-
-        File selectedFile = fileChooser.showOpenDialog(getStage());
-        if (selectedFile != null) {
-            lexerFile = selectedFile;
-            lexerFileField.setText(selectedFile.getAbsolutePath());
         }
     }
 
@@ -105,7 +88,6 @@ public class LoadGrammarDialogController {
     }
 
     public File getImportDir() { return importDir; }
-    public File getLexerFile() { return lexerFile; }
     public File getParserFile() { return parserFile; }
     public boolean isLoadConfirmed() { return loadConfirmed; }
 }

@@ -37,15 +37,14 @@ public interface IGrammarLoaderService {
     DynamicGrammar loadDynamicGrammar(File grammarFile) throws Exception;
 
     /**
-     * Loads and compiles a split grammar with explicit lexer and parser files.
+     * Loads and compiles a grammar with an explicit import directory.
      *
      * @param importDir The import directory for token vocab dependencies.
-     * @param lexerFile The explicitly provided lexer grammar file.
-     * @param parserFile The explicitly provided parser grammar file.
+     * @param parserFile The explicitly provided parser or combined grammar file.
      * @return A DynamicGrammar instance representing the parsed grammar.
      * @throws Exception If compilation fails.
      */
-    DynamicGrammar loadDynamicGrammar(File importDir, File lexerFile, File parserFile) throws Exception;
+    DynamicGrammar loadDynamicGrammar(File importDir, File parserFile) throws Exception;
 
     /**
      * Adds a directory to the list of paths used to resolve imported grammars.

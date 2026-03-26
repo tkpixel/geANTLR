@@ -150,14 +150,13 @@ public class MainViewController {
 
             if (controller.isLoadConfirmed()) {
                 File importDir = controller.getImportDir();
-                File lexerFile = controller.getLexerFile();
                 File parserFile = controller.getParserFile();
 
                 if (importDir != null) {
                     grammarLoaderService.addImportDirectory(importDir);
                 }
 
-                DynamicGrammar dynamicGrammar = grammarLoaderService.loadDynamicGrammar(importDir, lexerFile, parserFile);
+                DynamicGrammar dynamicGrammar = grammarLoaderService.loadDynamicGrammar(importDir, parserFile);
                 viewModel.setDynamicGrammar(dynamicGrammar);
                 context.getBean(org.geantlr.services.TokenHighlightMappingService.class).buildVocabularyMapping(dynamicGrammar.getVocabulary());
 
