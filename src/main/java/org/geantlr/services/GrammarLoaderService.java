@@ -95,13 +95,12 @@ public class GrammarLoaderService implements IGrammarLoaderService {
             lexerText = lexerText.replaceAll("(?i)lexer\\s+grammar\\s+[a-zA-Z0-9_]+\\s*;", "");
             parserText = parserText.replaceAll("(?i)parser\\s+grammar\\s+[a-zA-Z0-9_]+\\s*;", "");
 
-            // Remove options blocks entirely to prevent conflicts and ATN initialization crashes
-            parserText = parserText.replaceAll("(?s)options\\s*\\{.*?\\}", "");
-            lexerText = lexerText.replaceAll("(?s)options\\s*\\{.*?\\}", "");
+            // Remove tokenVocab from parser and any empty options blocks left behind
+            parserText = parserText.replaceAll("(?i)tokenVocab\\s*=\\s*[a-zA-Z0-9_]+\\s*;", "");
+            parserText = parserText.replaceAll("(?s)options\\s*\\{\\s*\\}", "");
 
-            // Remove import directives that could cause resolution loops
-            parserText = parserText.replaceAll("(?i)import\\s+[a-zA-Z0-9_]+\\s*;", "");
-            lexerText = lexerText.replaceAll("(?i)import\\s+[a-zA-Z0-9_]+\\s*;", "");
+            // Remove only the first global options block from the lexer to prevent duplicate options errors
+            lexerText = lexerText.replaceFirst("(?s)options\\s*\\{[^}]*\\}", "");
 
             String combinedText = "grammar CombinedGrammar;\n" + parserText + "\n" + lexerText;
 
@@ -144,11 +143,12 @@ public class GrammarLoaderService implements IGrammarLoaderService {
                     lexerText = lexerText.replaceAll("(?i)lexer\\s+grammar\\s+[a-zA-Z0-9_]+\\s*;", "");
                     parserText = parserText.replaceAll("(?i)parser\\s+grammar\\s+[a-zA-Z0-9_]+\\s*;", "");
 
-                    // Remove options and imports entirely to prevent conflicts
-                    parserText = parserText.replaceAll("(?s)options\\s*\\{.*?\\}", "");
-                    lexerText = lexerText.replaceAll("(?s)options\\s*\\{.*?\\}", "");
-                    parserText = parserText.replaceAll("(?i)import\\s+[a-zA-Z0-9_]+\\s*;", "");
-                    lexerText = lexerText.replaceAll("(?i)import\\s+[a-zA-Z0-9_]+\\s*;", "");
+                    // Remove tokenVocab from parser and any empty options blocks left behind
+                    parserText = parserText.replaceAll("(?i)tokenVocab\\s*=\\s*[a-zA-Z0-9_]+\\s*;", "");
+                    parserText = parserText.replaceAll("(?s)options\\s*\\{\\s*\\}", "");
+
+                    // Remove only the first global options block from the lexer to prevent duplicate options errors
+                    lexerText = lexerText.replaceFirst("(?s)options\\s*\\{[^}]*\\}", "");
 
                     String combinedText = "grammar CombinedGrammar;\n" + parserText + "\n" + lexerText;
 
