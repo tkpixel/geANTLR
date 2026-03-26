@@ -102,6 +102,10 @@ public class GrammarLoaderService implements IGrammarLoaderService {
             // Remove only the first global options block from the lexer to prevent duplicate options errors
             lexerText = lexerText.replaceFirst("(?s)options\\s*\\{[^}]*\\}", "");
 
+            // Remove lexer-specific syntax that causes fatal ATN errors in combined grammars
+            lexerText = lexerText.replaceAll("(?s)channels\\s*\\{[^}]*\\}", "");
+            lexerText = lexerText.replaceAll("(?s)mode\\s+[a-zA-Z0-9_]+\\s*;", "");
+
             String combinedText = "grammar CombinedGrammar;\n" + parserText + "\n" + lexerText;
 
             // Write combined text to a temporary file to let ANTLR Tool process it robustly with full context
@@ -150,6 +154,10 @@ public class GrammarLoaderService implements IGrammarLoaderService {
 
                     // Remove only the first global options block from the lexer to prevent duplicate options errors
                     lexerText = lexerText.replaceFirst("(?s)options\\s*\\{[^}]*\\}", "");
+
+                    // Remove lexer-specific syntax that causes fatal ATN errors in combined grammars
+                    lexerText = lexerText.replaceAll("(?s)channels\\s*\\{[^}]*\\}", "");
+                    lexerText = lexerText.replaceAll("(?s)mode\\s+[a-zA-Z0-9_]+\\s*;", "");
 
                     String combinedText = "grammar CombinedGrammar;\n" + parserText + "\n" + lexerText;
 
