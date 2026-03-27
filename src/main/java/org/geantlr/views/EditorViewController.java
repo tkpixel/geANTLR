@@ -61,6 +61,9 @@ public class EditorViewController {
     @FXML
     private Button loadDomainModelButton;
 
+    private final javafx.scene.control.Tooltip errorTooltip = new javafx.scene.control.Tooltip();
+    private SyntaxError lastHoveredError = null;
+
     private EditorViewModel viewModel;
     private final TokenHighlightMappingService tokenHighlightMappingService;
 
@@ -73,6 +76,37 @@ public class EditorViewController {
     public void initialize() {
         if (editorCodeArea != null) {
             editorCodeArea.setLineNumbersEnabled(true);
+
+            errorTooltip.setShowDelay(javafx.util.Duration.millis(200));
+            errorTooltip.setHideDelay(javafx.util.Duration.ZERO);
+
+            editorCodeArea.setOnMouseMoved(event -> {
+                if (viewModel == null) return;
+
+                TextPos pos = editorCodeArea.getTextPosition(event.getX(), event.getY());
+                SyntaxError error = null;
+                if (pos != null) {
+                    int line = pos.index() + 1;
+                    int col = pos.offset();
+                    error = viewModel.getErrorAt(line, col);
+                }
+
+                if (error != null) {
+                    if (error != lastHoveredError) {
+                        errorTooltip.setText(error.message());
+                        errorTooltip.show(editorCodeArea, event.getScreenX(), event.getScreenY() + 15);
+                        lastHoveredError = error;
+                    }
+                } else {
+                    errorTooltip.hide();
+                    lastHoveredError = null;
+                }
+            });
+
+            editorCodeArea.setOnMouseExited(event -> {
+                errorTooltip.hide();
+                lastHoveredError = null;
+            });
 
             editorCodeArea.sceneProperty().addListener((obs, oldScene, newScene) -> {
                 if (newScene != null) {

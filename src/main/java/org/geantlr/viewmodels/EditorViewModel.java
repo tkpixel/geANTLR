@@ -191,6 +191,19 @@ public class EditorViewModel {
         return tokenStylesByLine.getOrDefault(line, java.util.Collections.emptyList());
     }
 
+    public SyntaxError getErrorAt(int line, int charPositionInLine) {
+        for (SyntaxError error : errors) {
+            if (error.line() == line) {
+                int start = error.charPositionInLine();
+                int end = start + Math.max(1, error.length());
+                if (charPositionInLine >= start && charPositionInLine < end) {
+                    return error;
+                }
+            }
+        }
+        return null;
+    }
+
     public StringProperty textContentProperty() {
         return textContent;
     }

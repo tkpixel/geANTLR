@@ -45,6 +45,9 @@ class PlantUmlParsingServiceTest {
         + "\n"
         + "class Balise { anordnungImDP: WertMitQuelle\n}\n"
         + "\n"
+        + "class Datenpunkt { id: String }\n"
+        + "class Bezugspunkt { id: String }\n"
+        + "\n"
         + "}\n"
         + "@enduml";
 
@@ -135,6 +138,9 @@ class PlantUmlParsingServiceTest {
         assertFalse(ctx.fields().contains("DatenpunktKontextSammlung"),
             "DatenpunktKontext must not have 'DatenpunktKontextSammlung' as field");
     }
+
+    @Test
+    void testWertMitQuelleHasImplicitField() {
         service.parseDomainModel(EXAMPLE_PUML);
         Map<String, DomainClass> cache = service.getDomainModelCache();
 
@@ -175,6 +181,9 @@ class PlantUmlParsingServiceTest {
         assertNotNull(datenpunkt, "Datenpunkt class should be in cache");
         assertFalse(datenpunkt.fields().isEmpty(), "Datenpunkt should have fields");
     }
+
+    @Test
+    void testIgnoreClassesInsideNotes() {
         String pumlWithNotes = "@startuml\n"
             + "class Foo {\n"
             + "  bar: String\n"
@@ -191,6 +200,3 @@ class PlantUmlParsingServiceTest {
         assertTrue(cache.containsKey("Foo"), "Foo should be parsed");
     }
 }
-
-
-
