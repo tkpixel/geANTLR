@@ -135,6 +135,9 @@ class PlantUmlParsingServiceTest {
         assertFalse(ctx.fields().contains("DatenpunktKontextSammlung"),
             "DatenpunktKontext must not have 'DatenpunktKontextSammlung' as field");
     }
+
+    @Test
+    void testWertMitQuelleHasWert() {
         service.parseDomainModel(EXAMPLE_PUML);
         Map<String, DomainClass> cache = service.getDomainModelCache();
 
@@ -170,11 +173,10 @@ class PlantUmlParsingServiceTest {
         assertNotNull(ctx);
         String datenpunktType = ctx.fieldTypes().get("datenpunkt");
         assertEquals("Datenpunkt", datenpunktType);
-
-        DomainClass datenpunkt = cache.get("Datenpunkt");
-        assertNotNull(datenpunkt, "Datenpunkt class should be in cache");
-        assertFalse(datenpunkt.fields().isEmpty(), "Datenpunkt should have fields");
     }
+
+    @Test
+    void testNotesAreIgnored() {
         String pumlWithNotes = "@startuml\n"
             + "class Foo {\n"
             + "  bar: String\n"

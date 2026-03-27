@@ -3,6 +3,7 @@ package org.geantlr.views;
 import io.micronaut.context.annotation.Prototype;
 import jakarta.inject.Inject;
 import javafx.collections.ListChangeListener;
+import javafx.beans.InvalidationListener;
 import javafx.fxml.FXML;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
@@ -121,7 +122,8 @@ public class EditorViewController {
                 this.viewModel.selectedOllamaModelProperty().bind(modelComboBox.getSelectionModel().selectedItemProperty());
 
                 // Pre-select an item if available once the list is populated
-                this.viewModel.getAvailableOllamaModels().addListener((javafx.collections.ListChangeListener<String>) c -> {
+                // Bolt: Use InvalidationListener instead of ListChangeListener since we only need to trigger a full check/redraw, avoiding eager change computation overhead.
+                this.viewModel.getAvailableOllamaModels().addListener((InvalidationListener) obs -> {
                     if (!this.viewModel.getAvailableOllamaModels().isEmpty() && modelComboBox.getSelectionModel().isEmpty()) {
                         javafx.application.Platform.runLater(() -> modelComboBox.getSelectionModel().selectFirst());
                     }
@@ -217,14 +219,16 @@ public class EditorViewController {
             });
 
             // Listen to error changes
-            this.viewModel.getErrors().addListener((ListChangeListener<SyntaxError>) c -> {
+            // Bolt: Use InvalidationListener since we always trigger a full redraw of the syntax decorator anyway.
+            this.viewModel.getErrors().addListener((InvalidationListener) obs -> {
                 // Trigger a full redraw to apply syntax decorations
                 editorCodeArea.setSyntaxDecorator(null);
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
             });
 
             // Listen to token changes for highlighting
-            this.viewModel.getTokens().addListener((ListChangeListener<Token>) c -> {
+            // Bolt: Use InvalidationListener since we always trigger a full redraw of the syntax decorator anyway.
+            this.viewModel.getTokens().addListener((InvalidationListener) obs -> {
                 editorCodeArea.setSyntaxDecorator(null);
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
             });
@@ -261,7 +265,8 @@ public class EditorViewController {
             });
 
             // Listen to token suggestions
-            this.viewModel.getSuggestedTokens().addListener((ListChangeListener<String>) c -> {
+            // Bolt: Use InvalidationListener instead of ListChangeListener as we clear and rebuild the pane entirely.
+            this.viewModel.getSuggestedTokens().addListener((InvalidationListener) obs -> {
                 suggestionsPane.getChildren().clear();
                 for (String token : this.viewModel.getSuggestedTokens()) {
                     Button btn = new Button(token);
