@@ -78,14 +78,37 @@ public class CodeCompletionService {
         }
 
         // Check context for dot accessor
-        if (tokenIndex > 1 && tokens.size() >= tokenIndex) {
+        if (tokenIndex > 0 && tokens.size() >= tokenIndex) {
             Token previousToken = tokens.get(tokenIndex - 1);
-            if (".".equals(previousToken.getText())) {
-                Token objectToken = tokens.get(tokenIndex - 2);
-                String objectName = objectToken.getText();
+            String objectName = null;
+
+            if (".".equals(previousToken.getText()) && tokenIndex >= 2) {
+                objectName = tokens.get(tokenIndex - 2).getText();
+            } else if (tokenIndex >= 3 && ".".equals(tokens.get(tokenIndex - 2).getText())) {
+                objectName = tokens.get(tokenIndex - 3).getText();
+            }
+
+            if (objectName != null) {
                 Map<String, DomainClass> domainModelCache = plantUmlParsingService.getDomainModelCache();
-                if (domainModelCache.containsKey(objectName)) {
-                    DomainClass domainClass = domainModelCache.get(objectName);
+
+                // Try to resolve the variable name to its type by looking backwards in the token stream
+                // for a pattern like "Type objectName" or "Type objectName,"
+                String resolvedType = objectName;
+                if (!domainModelCache.containsKey(objectName)) {
+                    for (int i = tokenIndex - 1; i >= 1; i--) {
+                        if (objectName.equals(tokens.get(i).getText())) {
+                            // The token before the objectName might be its type
+                            String possibleType = tokens.get(i - 1).getText();
+                            if (domainModelCache.containsKey(possibleType)) {
+                                resolvedType = possibleType;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (domainModelCache.containsKey(resolvedType)) {
+                    DomainClass domainClass = domainModelCache.get(resolvedType);
                     if (domainClass != null && domainClass.fields() != null) {
                         for (String field : domainClass.fields()) {
                             if (!suggestedTokens.contains(field)) {
