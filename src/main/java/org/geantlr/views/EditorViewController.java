@@ -58,6 +58,9 @@ public class EditorViewController {
     @FXML
     private javafx.scene.control.ComboBox<String> modelComboBox;
 
+    @FXML
+    private Button loadDomainModelButton;
+
     private EditorViewModel viewModel;
     private final TokenHighlightMappingService tokenHighlightMappingService;
 
@@ -81,6 +84,18 @@ public class EditorViewController {
                             }
                         }
                     );
+                }
+            });
+        }
+
+        if (loadDomainModelButton != null) {
+            loadDomainModelButton.setOnAction(e -> {
+                FileChooser fileChooser = new FileChooser();
+                fileChooser.setTitle("Load Domain Model (.puml)");
+                fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PlantUML Files", "*.puml", "*.txt"));
+                File selectedFile = fileChooser.showOpenDialog(loadDomainModelButton.getScene().getWindow());
+                if (selectedFile != null) {
+                    this.viewModel.loadDomainModel(selectedFile);
                 }
             });
         }

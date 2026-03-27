@@ -52,6 +52,7 @@ public class EditorViewModel {
     private final CodeFormattingService codeFormattingService;
     private final MainViewModel mainViewModel;
     private final org.geantlr.services.RuleGenerationService ruleGenerationService;
+    private final org.geantlr.services.PlantUmlParsingService plantUmlParsingService;
 
     public javafx.beans.property.BooleanProperty experimentalModeProperty() {
         return mainViewModel.experimentalModeProperty();
@@ -63,12 +64,13 @@ public class EditorViewModel {
     private final ObjectProperty<ReplaceTextCommand> replaceTextCommand = new SimpleObjectProperty<>();
 
     @Inject
-    public EditorViewModel(AntlrGrammarService antlrGrammarService, CodeCompletionService codeCompletionService, CodeFormattingService codeFormattingService, MainViewModel mainViewModel, org.geantlr.services.RuleGenerationService ruleGenerationService) {
+    public EditorViewModel(AntlrGrammarService antlrGrammarService, CodeCompletionService codeCompletionService, CodeFormattingService codeFormattingService, MainViewModel mainViewModel, org.geantlr.services.RuleGenerationService ruleGenerationService, org.geantlr.services.PlantUmlParsingService plantUmlParsingService) {
         this.antlrGrammarService = antlrGrammarService;
         this.codeCompletionService = codeCompletionService;
         this.codeFormattingService = codeFormattingService;
         this.mainViewModel = mainViewModel;
         this.ruleGenerationService = ruleGenerationService;
+        this.plantUmlParsingService = plantUmlParsingService;
 
         debounce.setOnFinished(event -> parseText(textContent.get()));
 
@@ -339,5 +341,16 @@ public class EditorViewModel {
         });
 
         new Thread(generationTask).start();
+    }
+
+    public void loadDomainModel(java.io.File file) {
+        if (file == null || !file.exists()) return;
+        try {
+            String content = java.nio.file.Files.readString(file.toPath());
+            plantUmlParsingService.parseDomainModel(content);
+            updateSuggestions();
+        } catch (java.io.IOException e) {
+            e.printStackTrace();
+        }
     }
 }

@@ -23,6 +23,7 @@ module org.geantlr {
     requires langchain4j.ollama;
     requires google.genai;
     requires java.net.http;
+    requires net.sourceforge.plantuml;
 
     opens org.geantlr to javafx.fxml;
     opens org.geantlr.views to javafx.fxml;

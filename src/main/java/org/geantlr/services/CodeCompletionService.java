@@ -10,6 +10,7 @@ import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.Vocabulary;
 import org.antlr.v4.runtime.CommonTokenStream;
 
+import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -17,6 +18,13 @@ import java.util.Map;
 
 @Singleton
 public class CodeCompletionService {
+
+    private final PlantUmlParsingService plantUmlParsingService;
+
+    @Inject
+    public CodeCompletionService(PlantUmlParsingService plantUmlParsingService) {
+        this.plantUmlParsingService = plantUmlParsingService;
+    }
 
     public List<String> getSuggestedTokens(DynamicGrammar grammar, String text, int caretPosition) {
         if (grammar == null || text == null || grammar.getParserGrammar() == null) {
@@ -65,6 +73,26 @@ public class CodeCompletionService {
                 String displayName = vocabulary.getDisplayName(id);
                 if (displayName != null) {
                     suggestedTokens.add(displayName);
+                }
+            }
+        }
+
+        // Check context for dot accessor
+        if (tokenIndex > 1 && tokens.size() >= tokenIndex) {
+            Token previousToken = tokens.get(tokenIndex - 1);
+            if (".".equals(previousToken.getText())) {
+                Token objectToken = tokens.get(tokenIndex - 2);
+                String objectName = objectToken.getText();
+                Map<String, DomainClass> domainModelCache = plantUmlParsingService.getDomainModelCache();
+                if (domainModelCache.containsKey(objectName)) {
+                    DomainClass domainClass = domainModelCache.get(objectName);
+                    if (domainClass != null && domainClass.fields() != null) {
+                        for (String field : domainClass.fields()) {
+                            if (!suggestedTokens.contains(field)) {
+                                suggestedTokens.add(field);
+                            }
+                        }
+                    }
                 }
             }
         }
