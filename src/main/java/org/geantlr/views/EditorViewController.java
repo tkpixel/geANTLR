@@ -198,11 +198,14 @@ public class EditorViewController {
                             currentPos = TextPos.ofLeading(lastParagraph, textLen);
                         }
 
-                        editorCodeArea.insertText(currentPos, newVal.text() + " ", null);
+                        editorCodeArea.insertText(currentPos, newVal.text(), null);
 
-                        int newOffset = currentPos.offset() + newVal.text().length() + 1;
-                        editorCodeArea.select(TextPos.ofLeading(newOffset, newOffset));
-
+                        // Move caret to end of inserted text.
+                        // TextPos.ofLeading(paragraphIndex, offsetInParagraph) – both values must be
+                        // in paragraph-space, NOT an absolute character offset.
+                        int newCharOffset = currentPos.offset() + newVal.text().length();
+                        TextPos afterInsert = TextPos.ofLeading(currentPos.index(), newCharOffset);
+                        editorCodeArea.select(afterInsert, afterInsert);
                         editorCodeArea.requestFocus();
                     } finally {
                         // Clear the command in ViewModel to allow repeated commands
@@ -249,11 +252,11 @@ public class EditorViewController {
                 }
             });
 
-            // Listen to caret position
+            // Listen to caret position – compute absolute char offset across all paragraphs
             editorCodeArea.caretPositionProperty().addListener((obs, oldVal, newVal) -> {
                 if (newVal != null) {
-                    int caretIndex = newVal.offset();
-                    viewModel.onCaretPositionChanged(caretIndex);
+                    int absoluteOffset = computeAbsoluteOffset(newVal);
+                    viewModel.onCaretPositionChanged(absoluteOffset);
                 }
             });
 
@@ -366,5 +369,21 @@ public class EditorViewController {
 
     private void updateEditorStyle(int size) {
         editorCodeArea.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: " + size + "pt;");
+    }
+
+    /**
+     * Converts a TextPos (paragraph + intra-paragraph offset) to an absolute
+     * character offset in the full text, counting each paragraph separator as one '\n'.
+     */
+    private int computeAbsoluteOffset(TextPos pos) {
+        if (pos == null) return 0;
+        int absolute = 0;
+        int paragraphIndex = pos.index();
+        for (int i = 0; i < paragraphIndex; i++) {
+            absolute += editorCodeArea.getModel().getPlainText(i).length();
+            absolute += 1; // newline separator between paragraphs
+        }
+        absolute += pos.offset();
+        return absolute;
     }
 }

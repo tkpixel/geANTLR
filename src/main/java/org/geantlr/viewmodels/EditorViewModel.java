@@ -76,7 +76,10 @@ public class EditorViewModel {
 
         textContent.addListener((obs, oldVal, newVal) -> {
             debounce.playFromStart();
-            updateSuggestions();
+            // Suggestions are updated via onCaretPositionChanged which fires after every keystroke.
+            // Calling updateSuggestions() here would use a stale caretPosition (before the new char
+            // was inserted), causing dot-accessor detection to fail. The caretPositionProperty
+            // listener in EditorViewController fires after the model change with the correct position.
         });
 
         loadAvailableOllamaModels();
@@ -279,12 +282,10 @@ public class EditorViewModel {
 
     private void updateSuggestions() {
         var grammar = mainViewModel.getDynamicGrammar();
-        if (grammar == null) {
-            Platform.runLater(suggestedTokens::clear);
-            return;
-        }
         String text = textContent.get();
         int caretPosition = this.currentCaretPosition;
+        // Pass grammar (may be null) – CodeCompletionService handles domain-model suggestions
+        // independently of the grammar, so suggestions are available even without a loaded grammar.
         CompletableFuture.supplyAsync(() -> codeCompletionService.getSuggestedTokens(grammar, text, caretPosition))
             .thenAccept(suggestions -> Platform.runLater(() -> suggestedTokens.setAll(suggestions)));
     }
