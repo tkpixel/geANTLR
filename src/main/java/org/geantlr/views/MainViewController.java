@@ -50,6 +50,7 @@ public class MainViewController {
     private FontIcon themeIcon;
 
     private final MainViewModel viewModel;
+    private final IGrammarLoaderService grammarLoaderService;
     private final ApplicationContext context;
 
     private boolean isDarkMode = true;
@@ -58,8 +59,9 @@ public class MainViewController {
     private final Map<EditorViewModel, Region> editorRegions = new HashMap<>();
 
     @Inject
-    public MainViewController(MainViewModel viewModel, ApplicationContext context) {
+    public MainViewController(MainViewModel viewModel, IGrammarLoaderService grammarLoaderService, ApplicationContext context) {
         this.viewModel = viewModel;
+        this.grammarLoaderService = grammarLoaderService;
         this.context = context;
     }
 
