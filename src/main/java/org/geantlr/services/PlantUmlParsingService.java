@@ -4,6 +4,7 @@ import jakarta.inject.Singleton;
 import net.sourceforge.plantuml.SourceStringReader;
 import net.sourceforge.plantuml.classdiagram.ClassDiagram;
 import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.LeafType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,13 +34,16 @@ public class PlantUmlParsingService {
                     var data = node.getData();
 
                     if (data instanceof Entity entity) {
-                        for (CharSequence member : entity.getBodier().getFieldsToDisplay()) {
-                            fields.add(member.toString());
+                        LeafType type = entity.getLeafType();
+                        if (type == LeafType.CLASS || type == LeafType.ENUM || type == LeafType.INTERFACE || type == LeafType.ABSTRACT_CLASS) {
+                            for (CharSequence member : entity.getBodier().getFieldsToDisplay()) {
+                                fields.add(member.toString());
+                            }
+                            for (CharSequence member : entity.getBodier().getMethodsToDisplay()) {
+                                fields.add(member.toString());
+                            }
+                            domainModelCache.put(className, new DomainClass(className, fields));
                         }
-                        for (CharSequence member : entity.getBodier().getMethodsToDisplay()) {
-                            fields.add(member.toString());
-                        }
-                        domainModelCache.put(className, new DomainClass(className, fields));
                     }
                 }
             }
