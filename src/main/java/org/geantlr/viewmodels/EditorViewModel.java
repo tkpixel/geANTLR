@@ -52,6 +52,7 @@ public class EditorViewModel {
     private final CodeFormattingService codeFormattingService;
     private final MainViewModel mainViewModel;
     private final org.geantlr.services.RuleGenerationService ruleGenerationService;
+    private final org.geantlr.services.PlantUmlParsingService plantUmlParsingService;
 
     public javafx.beans.property.BooleanProperty experimentalModeProperty() {
         return mainViewModel.experimentalModeProperty();
@@ -63,18 +64,22 @@ public class EditorViewModel {
     private final ObjectProperty<ReplaceTextCommand> replaceTextCommand = new SimpleObjectProperty<>();
 
     @Inject
-    public EditorViewModel(AntlrGrammarService antlrGrammarService, CodeCompletionService codeCompletionService, CodeFormattingService codeFormattingService, MainViewModel mainViewModel, org.geantlr.services.RuleGenerationService ruleGenerationService) {
+    public EditorViewModel(AntlrGrammarService antlrGrammarService, CodeCompletionService codeCompletionService, CodeFormattingService codeFormattingService, MainViewModel mainViewModel, org.geantlr.services.RuleGenerationService ruleGenerationService, org.geantlr.services.PlantUmlParsingService plantUmlParsingService) {
         this.antlrGrammarService = antlrGrammarService;
         this.codeCompletionService = codeCompletionService;
         this.codeFormattingService = codeFormattingService;
         this.mainViewModel = mainViewModel;
         this.ruleGenerationService = ruleGenerationService;
+        this.plantUmlParsingService = plantUmlParsingService;
 
         debounce.setOnFinished(event -> parseText(textContent.get()));
 
         textContent.addListener((obs, oldVal, newVal) -> {
             debounce.playFromStart();
-            updateSuggestions();
+            // Suggestions are updated via onCaretPositionChanged which fires after every keystroke.
+            // Calling updateSuggestions() here would use a stale caretPosition (before the new char
+            // was inserted), causing dot-accessor detection to fail. The caretPositionProperty
+            // listener in EditorViewController fires after the model change with the correct position.
         });
 
         loadAvailableOllamaModels();
@@ -277,12 +282,10 @@ public class EditorViewModel {
 
     private void updateSuggestions() {
         var grammar = mainViewModel.getDynamicGrammar();
-        if (grammar == null) {
-            Platform.runLater(suggestedTokens::clear);
-            return;
-        }
         String text = textContent.get();
         int caretPosition = this.currentCaretPosition;
+        // Pass grammar (may be null) – CodeCompletionService handles domain-model suggestions
+        // independently of the grammar, so suggestions are available even without a loaded grammar.
         CompletableFuture.supplyAsync(() -> codeCompletionService.getSuggestedTokens(grammar, text, caretPosition))
             .thenAccept(suggestions -> Platform.runLater(() -> suggestedTokens.setAll(suggestions)));
     }
@@ -339,5 +342,16 @@ public class EditorViewModel {
         });
 
         new Thread(generationTask).start();
+    }
+
+    public void loadDomainModel(java.io.File file) {
+        if (file == null || !file.exists()) return;
+        try {
+            String content = java.nio.file.Files.readString(file.toPath());
+            plantUmlParsingService.parseDomainModel(content);
+            updateSuggestions();
+        } catch (java.io.IOException e) {
+            e.printStackTrace();
+        }
     }
 }
