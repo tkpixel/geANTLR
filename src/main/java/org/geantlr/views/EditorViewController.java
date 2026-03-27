@@ -15,6 +15,9 @@ import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.Label;
+import javafx.scene.input.MouseEvent;
+import javafx.animation.PauseTransition;
+import javafx.util.Duration;
 import javafx.stage.FileChooser;
 import java.io.File;
 import java.nio.file.Files;
@@ -62,7 +65,9 @@ public class EditorViewController {
     private Button loadDomainModelButton;
 
     private final javafx.scene.control.Tooltip errorTooltip = new javafx.scene.control.Tooltip();
+    private final PauseTransition hoverPause = new PauseTransition(Duration.millis(200));
     private SyntaxError lastHoveredError = null;
+    private double lastMouseX, lastMouseY;
 
     private EditorViewModel viewModel;
     private final TokenHighlightMappingService tokenHighlightMappingService;
@@ -77,35 +82,46 @@ public class EditorViewController {
         if (editorCodeArea != null) {
             editorCodeArea.setLineNumbersEnabled(true);
 
-            errorTooltip.setShowDelay(javafx.util.Duration.millis(200));
-            errorTooltip.setHideDelay(javafx.util.Duration.ZERO);
+            errorTooltip.setShowDelay(Duration.millis(200));
+            errorTooltip.setHideDelay(Duration.ZERO);
 
-            editorCodeArea.setOnMouseMoved(event -> {
+            hoverPause.setOnFinished(e -> {
                 if (viewModel == null) return;
-
-                TextPos pos = editorCodeArea.getTextPosition(event.getX(), event.getY());
-                SyntaxError error = null;
+                TextPos pos = editorCodeArea.getTextPosition(lastMouseX, lastMouseY);
                 if (pos != null) {
-                    int line = pos.index() + 1;
-                    int col = pos.offset();
-                    error = viewModel.getErrorAt(line, col);
-                }
-
-                if (error != null) {
-                    if (error != lastHoveredError) {
+                    SyntaxError error = viewModel.getErrorAt(pos.index() + 1, pos.offset());
+                    if (error != null) {
                         errorTooltip.setText(error.message());
-                        errorTooltip.show(editorCodeArea, event.getScreenX(), event.getScreenY() + 15);
-                        lastHoveredError = error;
+                        javafx.geometry.Point2D screenPos = editorCodeArea.localToScreen(lastMouseX, lastMouseY);
+                        if (screenPos != null) {
+                            errorTooltip.show(editorCodeArea, screenPos.getX(), screenPos.getY() + 15);
+                            lastHoveredError = error;
+                        }
                     }
-                } else {
-                    errorTooltip.hide();
-                    lastHoveredError = null;
                 }
             });
 
-            editorCodeArea.setOnMouseExited(event -> {
+            editorCodeArea.addEventFilter(MouseEvent.MOUSE_MOVED, event -> {
+                lastMouseX = event.getX();
+                lastMouseY = event.getY();
+
+                TextPos pos = editorCodeArea.getTextPosition(lastMouseX, lastMouseY);
+                SyntaxError error = null;
+                if (pos != null) {
+                    error = viewModel.getErrorAt(pos.index() + 1, pos.offset());
+                }
+
+                if (error != lastHoveredError || error == null) {
+                    errorTooltip.hide();
+                    lastHoveredError = null;
+                    hoverPause.playFromStart();
+                }
+            });
+
+            editorCodeArea.addEventFilter(MouseEvent.MOUSE_EXITED, event -> {
                 errorTooltip.hide();
                 lastHoveredError = null;
+                hoverPause.stop();
             });
 
             editorCodeArea.sceneProperty().addListener((obs, oldScene, newScene) -> {
