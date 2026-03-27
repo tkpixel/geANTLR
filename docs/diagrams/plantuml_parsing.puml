@@ -1,0 +1,79 @@
+@startuml
+title PlantUML Parsing Workflow
+actor User
+participant "PlantUmlParsingService" as Service
+participant "SourceStringReader\n(PlantUML Library)" as Library
+database "domainModelCache" as Cache
+
+User -> Service: parseDomainModel(pumlContent)
+activate Service
+Service -> Cache: clear()
+
+== Pass 1: PlantUML Library ==
+Service -> Library: new SourceStringReader(pumlContent)
+activate Library
+Library --> Service: Blocks & Diagrams
+deactivate Library
+
+loop for each parsed Class/Enum/Interface
+    Service -> Service: cleanMember(fields & methods)
+    Service -> Service: extractFieldType()
+    Service -> Cache: put(DomainClass)
+end
+note right of Service
+  Library fails if PUML is malformed
+  (e.g., missing closing braces)
+end note
+
+== Pass 2: Regex Fallback ==
+Service -> Service: parseDomainModelViaRegex()
+activate Service
+note right of Service
+  Catches single-line definitions
+  and classes with unclosed braces
+end note
+loop Match regex across PUML content
+    Service -> Cache: Put or update DomainClass fields
+end
+deactivate Service
+
+== Pass 3: Relations Parsing ==
+Service -> Service: parseDomainModelViaRelations()
+activate Service
+note right of Service
+  Derives fields from UML arrows:
+  A *-- B implies A owns B
+end note
+loop Match relation arrows
+    Service -> Service: tryAddRelationField(owner, target)
+    Service -> Cache: add field (and shortened variant)
+end
+deactivate Service
+
+== Pass 4: Implicit 'wert' Fields ==
+Service -> Service: addImplicitWertFields()
+activate Service
+loop For each class in Cache
+    alt Name contains "Wert", "Value", etc. AND no "wert" field exists
+        Service -> Cache: add "wert" to fields
+    end
+end
+deactivate Service
+
+== Pass 5: Cleanup Spurious Fields ==
+Service -> Service: removeSpuriousClassNameFields()
+activate Service
+note right of Service
+  Removes spurious fields resulting
+  from incomplete library parsing
+end note
+loop For each field in Cache
+    alt Field is a known class but lacks explicit relation type
+        Service -> Cache: remove(field)
+    end
+end
+deactivate Service
+
+Service -> User: void (Cache updated)
+deactivate Service
+@enduml
