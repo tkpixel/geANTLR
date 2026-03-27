@@ -11,39 +11,43 @@
 /* Custom CodeArea styling for better readability */
 .editor-code-area {
     -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-background-color: #2b2b2b;
 }
 
 /* Color the main editor text */
 .editor-code-area .content .text {
-    -fx-fill: -color-fg-default;
+    -fx-fill: #a9b7c6;
 }
 
 /* Syntax Highlighting */
 .editor-code-area .keyword {
-    -fx-fill: #000080;
+    -fx-fill: #cc7832;
     -fx-font-weight: bold;
 }
 
 .editor-code-area .string {
-    -fx-fill: #008000;
-    -fx-font-weight: bold;
+    -fx-fill: #6a8759;
 }
 
 .editor-code-area .number {
-    -fx-fill: -color-warning-fg;
+    -fx-fill: #6897bb;
 }
 
 .editor-code-area .comment {
-    -fx-fill: -color-fg-muted;
+    -fx-fill: #808080;
     -fx-font-style: italic;
 }
 
+.editor-code-area .annotation {
+    -fx-fill: #bbb529;
+}
+
 .editor-code-area .identifier {
-    -fx-fill: -color-fg-default;
+    -fx-fill: #a9b7c6;
 }
 
 .editor-code-area .operator {
-    -fx-fill: -color-fg-default;
+    -fx-fill: #a9b7c6;
 }
 
 /* Style the line numbers in the primary accent color - Force with !important */

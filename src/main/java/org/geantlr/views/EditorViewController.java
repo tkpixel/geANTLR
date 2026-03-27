@@ -263,35 +263,56 @@ public class EditorViewController {
             @Override
             public RichParagraph createRichParagraph(CodeTextModel model, int paragraphIndex) {
                 String text = model.getPlainText(paragraphIndex);
-                RichParagraph.Builder builder = RichParagraph.builder().addSegment(text);
+                RichParagraph.Builder builder = RichParagraph.builder();
 
                 // Note: ANTLR lines are 1-based, paragraphIndex is 0-based
                 int antlrLine = paragraphIndex + 1;
 
                 if (viewModel != null) {
                     var vocab = viewModel.getVocabulary();
-                    // We will query the view model for the processed token styles for this specific line
                     var tokenStyles = viewModel.getTokenStylesForLine(antlrLine);
 
                     if (vocab != null && tokenStyles != null && !tokenStyles.isEmpty()) {
-                        for (EditorViewModel.TokenStyle style : tokenStyles) {
+                        // Ensure token styles are sorted by their start index and do not overlap
+                        java.util.List<EditorViewModel.TokenStyle> sortedStyles = new java.util.ArrayList<>(tokenStyles);
+                        sortedStyles.sort(java.util.Comparator.comparingInt(EditorViewModel.TokenStyle::startInLine));
+
+                        int currentIndex = 0;
+                        for (EditorViewModel.TokenStyle style : sortedStyles) {
                             int start = style.startInLine();
                             int end = style.endInLine();
 
-                            // Ensure valid bounds
-                            if (start >= 0 && end <= text.length() && start < end) {
-                                String cssClass = tokenHighlightMappingService.getCssClass(style.symbolicName());
-                                if (cssClass != null) {
-                                    // Workaround for the reviewer's missing method:
-                                    // We'll map the css class string directly to a Color using a simple lookup
-                                    // because addHighlight only takes a Color, despite the prompt's instruction.
-                                    Color highlightColor = getHighlightColor(cssClass);
-                                    if (highlightColor != null) {
-                                        builder.addHighlight(start, end, highlightColor);
-                                    }
+                            // Ensure strict bounds checking to prevent overlap or out-of-order text duplication
+                            if (start >= currentIndex && end <= text.length() && start < end) {
+                                // Add any unstyled text before this token
+                                if (start > currentIndex) {
+                                    builder.addSegment(text.substring(currentIndex, start));
                                 }
+
+                                String cssClass = tokenHighlightMappingService.getCssClass(style.tokenType());
+                                String tokenText = text.substring(start, end);
+
+                                if (tokenText.startsWith("@")) {
+                                    cssClass = "annotation";
+                                }
+
+                                if (cssClass != null) {
+                                    builder.addWithStyleNames(tokenText, cssClass);
+                                } else {
+                                    builder.addSegment(tokenText);
+                                }
+
+                                currentIndex = end;
                             }
                         }
+
+                        // Add any remaining unstyled text at the end of the line
+                        if (currentIndex < text.length()) {
+                            builder.addSegment(text.substring(currentIndex));
+                        }
+                    } else {
+                        // No tokens to style, just add the whole text
+                        builder.addSegment(text);
                     }
 
                     // Check for errors on this line
@@ -310,6 +331,8 @@ public class EditorViewController {
                             }
                         }
                     }
+                } else {
+                    builder.addSegment(text);
                 }
 
                 return builder.build();
@@ -328,16 +351,5 @@ public class EditorViewController {
 
     private void updateEditorStyle(int size) {
         editorCodeArea.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: " + size + "pt;");
-    }
-
-    private Color getHighlightColor(String cssClass) {
-        // Fallback mapping since addHighlight requires Color instead of CSS class strings
-        return switch (cssClass) {
-            case "keyword" -> Color.web("#000080"); // Standard Java keyword
-            case "string" -> Color.web("#008000");  // Standard Java string
-            case "number" -> Color.web("#bf8700");  // -color-warning-fg
-            case "comment" -> Color.web("#8c959f"); // -color-fg-muted
-            default -> null;
-        };
     }
 }

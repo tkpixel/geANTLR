@@ -50,52 +50,104 @@ public class GrammarLoaderService implements IGrammarLoaderService {
 
     @Override
     public DynamicGrammar loadDynamicGrammar(File grammarFile) throws Exception {
-        if (grammarFile == null || !grammarFile.exists() || !grammarFile.isFile()) {
-            throw new IllegalArgumentException("Invalid grammar file provided.");
+        return loadDynamicGrammar(grammarFile.getParentFile(), grammarFile);
+    }
+
+    @Override
+    public DynamicGrammar loadDynamicGrammar(File importDir, File parserFile) throws Exception {
+        if (parserFile == null || !parserFile.exists() || !parserFile.isFile()) {
+            throw new IllegalArgumentException("Invalid parser grammar file provided.");
         }
 
-        // Initialize ANTLR Tool with a custom import resolution strategy
+        // Custom tool to support multiple import directories for dependencies
         Tool tool = new Tool() {
             @Override
             public File getImportedGrammarFile(Grammar g, String fileName) {
-                // Try explicitly added import directories first
                 for (File dir : importDirectories) {
                     File candidate = new File(dir, fileName);
                     if (candidate.exists() && candidate.isFile()) {
                         return candidate;
                     }
                 }
-                // Fallback to the original logic (e.g. checking libDirectory)
                 return super.getImportedGrammarFile(g, fileName);
             }
         };
 
-        // Ensure the directory of the file is in the library path so it can resolve imports if needed locally
-        tool.libDirectory = grammarFile.getParentFile().getAbsolutePath();
-
-        // 2. Instantiate Grammar object.
-        // It reads and parses the .g4 file to construct AST and rules.
-        Grammar parserGrammar = tool.loadGrammar(grammarFile.getAbsolutePath());
-
-        // We only support valid combined or parser grammars for this primary entry point
-        if (parserGrammar == null) {
-            throw new IllegalStateException("Failed to load parser grammar from " + grammarFile.getName());
+        if (importDir != null && importDir.exists()) {
+            tool.libDirectory = importDir.getAbsolutePath();
+            tool.outputDirectory = importDir.getAbsolutePath();
+            addImportDirectory(importDir);
+        } else {
+            tool.libDirectory = parserFile.getParentFile().getAbsolutePath();
+            tool.outputDirectory = parserFile.getParentFile().getAbsolutePath();
         }
 
-        // 3. Extract the implicit Lexer grammar
         LexerGrammar lexerGrammar = null;
-        if (parserGrammar.isCombined()) {
-            lexerGrammar = parserGrammar.implicitLexer;
-            if (lexerGrammar == null) {
-                // Sometime the Tool's loading doesn't expose it directly based on timing, but typically it sets `implicitLexer`
-                throw new IllegalStateException("Combined grammar loaded, but implicit lexer is null.");
+        Grammar parserGrammar = null;
+        String rawGrammarText = loadGrammarContent(parserFile);
+
+        // NATIVE 2-STEP LOAD PROCESS
+        // Implicit resolution logic for when only parser is provided
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("tokenVocab\\s*=\\s*([a-zA-Z0-9_]+)").matcher(rawGrammarText);
+        if (m.find()) {
+                String lexerName = m.group(1);
+                File inferredLexer = new File(parserFile.getParentFile(), lexerName + ".g4");
+
+                if (!inferredLexer.exists() && importDir != null) {
+                    inferredLexer = new File(importDir, lexerName + ".g4");
+                }
+
+                if (!inferredLexer.exists()) {
+                    for (File dir : importDirectories) {
+                        File candidate = new File(dir, lexerName + ".g4");
+                        if (candidate.exists()) {
+                            inferredLexer = candidate;
+                            break;
+                        }
+                    }
+                }
+
+                if (inferredLexer.exists()) {
+                     // STEP 1: Process inferred Lexer
+                    Tool lexerTool = new Tool() {
+                        @Override
+                        public File getImportedGrammarFile(Grammar g, String fileName) {
+                            return tool.getImportedGrammarFile(g, fileName);
+                        }
+                    };
+                    lexerTool.libDirectory = tool.libDirectory;
+                    lexerTool.outputDirectory = tool.outputDirectory;
+
+                    Grammar rootLexer = lexerTool.loadGrammar(inferredLexer.getAbsolutePath());
+                    if (rootLexer instanceof LexerGrammar) {
+                        lexerGrammar = (LexerGrammar) rootLexer;
+                        lexerTool.process(lexerGrammar, true);
+                    }
+
+                    // STEP 2: Load Parser
+                    parserGrammar = tool.loadGrammar(parserFile.getAbsolutePath());
+                } else {
+                    // Fallback to strict load if lexer not found
+                    parserGrammar = tool.loadGrammar(parserFile.getAbsolutePath());
+                    if (parserGrammar != null && parserGrammar.isCombined()) {
+                        lexerGrammar = parserGrammar.implicitLexer;
+                    }
+                }
+        } else {
+            // Not split, load standard
+            parserGrammar = tool.loadGrammar(parserFile.getAbsolutePath());
+            if (parserGrammar != null && parserGrammar.isCombined()) {
+                lexerGrammar = parserGrammar.implicitLexer;
+            } else if (parserGrammar instanceof LexerGrammar) {
+                lexerGrammar = (LexerGrammar) parserGrammar;
+                parserGrammar = null;
             }
-        } else if (parserGrammar instanceof LexerGrammar) {
-            lexerGrammar = (LexerGrammar) parserGrammar;
-            parserGrammar = null; // No parser grammar
         }
 
-        // Explicitly extract and store the ATN and Vocabulary
+        if (parserGrammar == null && lexerGrammar == null) {
+            throw new IllegalStateException("Failed to load parser grammar from " + parserFile.getName());
+        }
+
         org.antlr.v4.runtime.atn.ATN atn = null;
         org.antlr.v4.runtime.Vocabulary vocabulary = null;
 
@@ -110,9 +162,8 @@ public class GrammarLoaderService implements IGrammarLoaderService {
         DynamicGrammar dynamicGrammar = new DynamicGrammar(parserGrammar, lexerGrammar);
         dynamicGrammar.setAtn(atn);
         dynamicGrammar.setVocabulary(vocabulary);
-        dynamicGrammar.setRawGrammarText(loadGrammarContent(grammarFile));
+        dynamicGrammar.setRawGrammarText(rawGrammarText);
 
-        // Programmatically initialize interpreters with empty streams
         if (lexerGrammar != null) {
             org.antlr.v4.runtime.CharStream emptyInput = org.antlr.v4.runtime.CharStreams.fromString("");
             org.antlr.v4.runtime.LexerInterpreter lexerInterpreter = lexerGrammar.createLexerInterpreter(emptyInput);

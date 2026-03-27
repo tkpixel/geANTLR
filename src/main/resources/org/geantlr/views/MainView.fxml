@@ -27,16 +27,6 @@
                         <FontIcon iconLiteral="mdi2f-file-code-outline" iconSize="20"/>
                     </graphic>
                 </Button>
-                <Button text="Add Import Dir" onAction="#addImportDirectory">
-                    <graphic>
-                        <FontIcon iconLiteral="mdi2f-folder-plus-outline" iconSize="20"/>
-                    </graphic>
-                </Button>
-                <Button text="Clear Import Dirs" onAction="#clearImportDirectories">
-                    <graphic>
-                        <FontIcon iconLiteral="mdi2f-folder-remove-outline" iconSize="20"/>
-                    </graphic>
-                </Button>
                 <Button fx:id="experimentalModeBtn" text="Experimental Mode" onAction="#toggleExperimentalMode" styleClass="accent">
                     <graphic>
                         <FontIcon iconLiteral="mdi2f-flask-outline" iconSize="20"/>
