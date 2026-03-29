@@ -9,15 +9,19 @@ import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.paint.Color;
 import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.Label;
+import javafx.scene.input.MouseEvent;
+import javafx.animation.PauseTransition;
+import javafx.util.Duration;
 import javafx.stage.FileChooser;
 import java.io.File;
 import java.nio.file.Files;
+import java.util.Objects;
+import java.util.logging.Logger;
 import jfx.incubator.scene.control.richtext.CodeArea;
 import jfx.incubator.scene.control.richtext.SyntaxDecorator;
 import jfx.incubator.scene.control.richtext.model.CodeTextModel;
@@ -30,6 +34,8 @@ import org.antlr.v4.runtime.Token;
 
 @Prototype
 public class EditorViewController {
+
+    private static final Logger LOG = Logger.getLogger(EditorViewController.class.getName());
 
     @FXML
     private CodeArea editorCodeArea;
@@ -61,6 +67,12 @@ public class EditorViewController {
     @FXML
     private Button loadDomainModelButton;
 
+    private final javafx.scene.control.Tooltip errorTooltip = new javafx.scene.control.Tooltip();
+    private final PauseTransition hoverPause = new PauseTransition(Duration.millis(300));
+    private SyntaxError lastHoveredError = null;
+    // Screen coordinates stored on mouse-move, used when the pause fires
+    private double lastScreenX, lastScreenY;
+
     private EditorViewModel viewModel;
     private final TokenHighlightMappingService tokenHighlightMappingService;
 
@@ -73,6 +85,83 @@ public class EditorViewController {
     public void initialize() {
         if (editorCodeArea != null) {
             editorCodeArea.setLineNumbersEnabled(true);
+
+            // Style tooltip for Darcula / dark theme
+            errorTooltip.setStyle(
+                "-fx-background-color: #3c3f41; -fx-text-fill: #bbbbbb; " +
+                "-fx-border-color: #646464; -fx-padding: 8px; -fx-font-size: 11pt;"
+            );
+            errorTooltip.setWrapText(true);
+            errorTooltip.setMaxWidth(500);
+
+            // Fired after the hover delay – show the tooltip if still over an error
+            hoverPause.setOnFinished(e -> {
+                if (viewModel == null || editorCodeArea.getScene() == null) return;
+
+                // getTextPosition() takes SCREEN coordinates (it converts internally)
+                TextPos pos = editorCodeArea.getTextPosition(lastScreenX, lastScreenY);
+                if (pos == null) {
+                    LOG.warning("[Hover] getTextPosition returned null for screen=(" + lastScreenX + "," + lastScreenY + ")");
+                    return;
+                }
+
+                int antlrLine = pos.index() + 1;
+                int antlrChar = pos.offset();
+                LOG.info("[Hover] TextPos index=" + pos.index() + " offset=" + pos.offset()
+                    + " → ANTLR line=" + antlrLine + " char=" + antlrChar
+                    + "  errors=" + viewModel.getErrors().size());
+                for (SyntaxError err : viewModel.getErrors()) {
+                    LOG.info("[Hover]   error: line=" + err.line() + " charPos=" + err.charPositionInLine()
+                        + " len=" + err.length() + " msg=" + err.message());
+                }
+
+                SyntaxError error = viewModel.getErrorAt(antlrLine, antlrChar);
+                if (error != null) {
+                    LOG.info("[Hover] MATCH → showing tooltip: " + error.message());
+                    errorTooltip.setText(error.message());
+                    errorTooltip.show(editorCodeArea, lastScreenX + 2, lastScreenY + 18);
+                } else {
+                    LOG.info("[Hover] no match at line=" + antlrLine + " char=" + antlrChar);
+                }
+            });
+
+            // Shared handler for MOUSE_MOVED and MOUSE_DRAGGED
+            javafx.event.EventHandler<MouseEvent> mouseHandler = event -> {
+                if (viewModel == null) return;
+
+                double screenX = event.getScreenX();
+                double screenY = event.getScreenY();
+
+                // getTextPosition() takes SCREEN coordinates (it converts internally)
+                TextPos pos = editorCodeArea.getTextPosition(screenX, screenY);
+
+                SyntaxError errorUnderCursor = (pos != null)
+                    ? viewModel.getErrorAt(pos.index() + 1, pos.offset())
+                    : null;
+
+                if (!Objects.equals(errorUnderCursor, lastHoveredError)) {
+                    errorTooltip.hide();
+                    hoverPause.stop();
+                    lastHoveredError = errorUnderCursor;
+                    if (errorUnderCursor != null) {
+                        lastScreenX = screenX;
+                        lastScreenY = screenY;
+                        hoverPause.playFromStart();
+                    }
+                } else if (errorUnderCursor != null) {
+                    lastScreenX = screenX;
+                    lastScreenY = screenY;
+                }
+            };
+
+            editorCodeArea.addEventFilter(MouseEvent.MOUSE_MOVED, mouseHandler);
+            editorCodeArea.addEventFilter(MouseEvent.MOUSE_DRAGGED, mouseHandler);
+
+            editorCodeArea.addEventFilter(MouseEvent.MOUSE_EXITED, event -> {
+                errorTooltip.hide();
+                lastHoveredError = null;
+                hoverPause.stop();
+            });
 
             editorCodeArea.sceneProperty().addListener((obs, oldScene, newScene) -> {
                 if (newScene != null) {
@@ -145,7 +234,7 @@ public class EditorViewController {
                         this.viewModel.referenceTemplateProperty().set(content);
                         this.viewModel.referenceTemplateNameProperty().set("Template: " + selectedFile.getName());
                     } catch (Exception ex) {
-                        ex.printStackTrace();
+                        LOG.severe("Failed to read template file: " + ex.getMessage());
                     }
                 }
             });

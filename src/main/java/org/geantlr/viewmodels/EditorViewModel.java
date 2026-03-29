@@ -11,7 +11,6 @@ import javafx.collections.ObservableList;
 import org.geantlr.services.AntlrGrammarService;
 import org.geantlr.services.CodeCompletionService;
 import org.geantlr.services.CodeFormattingService;
-import org.geantlr.services.ParseResult;
 import org.geantlr.services.SyntaxError;
 import org.antlr.v4.runtime.Token;
 import javafx.animation.PauseTransition;
@@ -19,9 +18,12 @@ import javafx.application.Platform;
 import javafx.util.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Logger;
 
 @Prototype
 public class EditorViewModel {
+
+    private static final Logger LOG = Logger.getLogger(EditorViewModel.class.getName());
 
     private final StringProperty textContent = new SimpleStringProperty("");
     private final javafx.beans.property.IntegerProperty fontSize = new javafx.beans.property.SimpleIntegerProperty(13);
@@ -55,7 +57,7 @@ public class EditorViewModel {
     private final org.geantlr.services.PlantUmlParsingService plantUmlParsingService;
 
     public javafx.beans.property.BooleanProperty experimentalModeProperty() {
-        return mainViewModel.experimentalModeProperty();
+        return mainViewModel != null ? mainViewModel.experimentalModeProperty() : null;
     }
 
     private final PauseTransition debounce = new PauseTransition(Duration.millis(300));
@@ -76,10 +78,6 @@ public class EditorViewModel {
 
         textContent.addListener((obs, oldVal, newVal) -> {
             debounce.playFromStart();
-            // Suggestions are updated via onCaretPositionChanged which fires after every keystroke.
-            // Calling updateSuggestions() here would use a stale caretPosition (before the new char
-            // was inserted), causing dot-accessor detection to fail. The caretPositionProperty
-            // listener in EditorViewController fires after the model change with the correct position.
         });
 
         loadAvailableOllamaModels();
@@ -108,7 +106,7 @@ public class EditorViewModel {
                 }
             }
 
-            // Fallback just in case the directory strategy misses something or changes
+            // Fallback
             if (models.isEmpty()) {
                 models.add("qwen2.5-coder:7b");
                 models.add("llama3");
@@ -121,6 +119,7 @@ public class EditorViewModel {
     }
 
     private void parseText(String text) {
+        if (mainViewModel == null) return;
         var grammar = mainViewModel.getDynamicGrammar();
         if (grammar == null) {
             errors.clear();
@@ -130,7 +129,6 @@ public class EditorViewModel {
 
         CompletableFuture.supplyAsync(() -> antlrGrammarService.parseText(grammar, text))
             .thenAccept(parseResult -> {
-                // Compute the token styles on the background thread
                 var newStyles = computeTokenStyles(parseResult.tokens(), grammar.getVocabulary());
 
                 Platform.runLater(() -> {
@@ -154,10 +152,8 @@ public class EditorViewModel {
             if (text == null) continue;
 
             String symbolicName = vocab.getSymbolicName(token.getType());
-
             int startLine = token.getLine();
             int startCharPos = token.getCharPositionInLine();
-
             String[] lines = text.split("\r?\n", -1);
 
             for (int i = 0; i < lines.length; i++) {
@@ -183,12 +179,26 @@ public class EditorViewModel {
     }
 
     public org.antlr.v4.runtime.Vocabulary getVocabulary() {
+        if (mainViewModel == null) return null;
         var grammar = mainViewModel.getDynamicGrammar();
         return grammar != null ? grammar.getVocabulary() : null;
     }
 
     public java.util.List<TokenStyle> getTokenStylesForLine(int line) {
         return tokenStylesByLine.getOrDefault(line, java.util.Collections.emptyList());
+    }
+
+    public SyntaxError getErrorAt(int line, int charPositionInLine) {
+        for (SyntaxError error : errors) {
+            if (error.line() == line) {
+                int start = error.charPositionInLine();
+                int end = start + Math.max(1, error.length());
+                if (charPositionInLine >= start && charPositionInLine < end) {
+                    return error;
+                }
+            }
+        }
+        return null;
     }
 
     public StringProperty textContentProperty() {
@@ -240,6 +250,7 @@ public class EditorViewModel {
     }
 
     public void formatCode() {
+        if (mainViewModel == null) return;
         var grammar = mainViewModel.getDynamicGrammar();
         if (grammar == null) return;
 
@@ -281,11 +292,10 @@ public class EditorViewModel {
     }
 
     private void updateSuggestions() {
+        if (mainViewModel == null) return;
         var grammar = mainViewModel.getDynamicGrammar();
         String text = textContent.get();
         int caretPosition = this.currentCaretPosition;
-        // Pass grammar (may be null) – CodeCompletionService handles domain-model suggestions
-        // independently of the grammar, so suggestions are available even without a loaded grammar.
         CompletableFuture.supplyAsync(() -> codeCompletionService.getSuggestedTokens(grammar, text, caretPosition))
             .thenAccept(suggestions -> Platform.runLater(() -> suggestedTokens.setAll(suggestions)));
     }
@@ -313,7 +323,6 @@ public class EditorViewModel {
 
         isGenerating.set(true);
 
-        // Capture JavaFX properties safely on the UI thread before passing to the background task
         final String templateContent = referenceTemplate.get();
         final String modelName = selectedOllamaModel.get();
 
@@ -337,7 +346,7 @@ public class EditorViewModel {
             isGenerating.set(false);
             Throwable e = generationTask.getException();
             if (e != null) {
-                e.printStackTrace();
+                LOG.severe("Rule generation failed: " + e.getMessage());
             }
         });
 
@@ -351,7 +360,7 @@ public class EditorViewModel {
             plantUmlParsingService.parseDomainModel(content);
             updateSuggestions();
         } catch (java.io.IOException e) {
-            e.printStackTrace();
+            LOG.severe("Failed to load domain model: " + e.getMessage());
         }
     }
 }
