@@ -140,7 +140,7 @@ class PlantUmlParsingServiceTest {
     }
 
     @Test
-    void testWertMitQuelleHasImplicitField() {
+    void testWertMitQuelleImplicitField() {
         service.parseDomainModel(EXAMPLE_PUML);
         Map<String, DomainClass> cache = service.getDomainModelCache();
 
@@ -179,11 +179,11 @@ class PlantUmlParsingServiceTest {
 
         DomainClass datenpunkt = cache.get("Datenpunkt");
         assertNotNull(datenpunkt, "Datenpunkt class should be in cache");
-        assertFalse(datenpunkt.fields().isEmpty(), "Datenpunkt should have fields");
+        assertTrue(datenpunkt.fields().isEmpty(), "Datenpunkt is a stub and should have no fields");
     }
 
     @Test
-    void testIgnoreClassesInsideNotes() {
+    void testNotesAreNotParsedAsClasses() {
         String pumlWithNotes = "@startuml\n"
             + "class Foo {\n"
             + "  bar: String\n"

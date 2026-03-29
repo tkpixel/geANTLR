@@ -96,11 +96,36 @@ public class PlantUmlParsingService {
         // by the PlantUML library, e.g. when braces are missing).
         removeSpuriousClassNameFields();
 
+        // Sixth pass: For every field registered with a type in fieldTypes,
+        // ensure the target type is actually in the domainModelCache.
+        // If it isn't, create an empty stub class for it so that chained dot access
+        // (like ctx.datenpunkt.) doesn't return null and crash the code completion logic.
+        ensureReferencedClassesExist();
+
         // Diagnostics – printed to stdout so the developer can verify the parsed model
         System.out.println("[PlantUmlParsingService] Parsed " + domainModelCache.size() + " classes:");
         domainModelCache.forEach((name, dc) ->
             System.out.println("  " + name + " → fields: " + dc.fields() + " | types: " + dc.fieldTypes())
         );
+    }
+
+    /**
+     * Iterates over all discovered field types. If a type isn't present in the cache,
+     * it adds an empty DomainClass stub for it.
+     */
+    private void ensureReferencedClassesExist() {
+        // Collect missing types first to avoid concurrent modification exceptions
+        java.util.Set<String> missingTypes = new java.util.HashSet<>();
+        for (DomainClass dc : domainModelCache.values()) {
+            for (String typeName : dc.fieldTypes().values()) {
+                if (!domainModelCache.containsKey(typeName)) {
+                    missingTypes.add(typeName);
+                }
+            }
+        }
+        for (String missingType : missingTypes) {
+            domainModelCache.put(missingType, new DomainClass(missingType, new ArrayList<>(), new HashMap<>()));
+        }
     }
 
     /**
