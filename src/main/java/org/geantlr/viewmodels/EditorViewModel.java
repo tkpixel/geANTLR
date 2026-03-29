@@ -11,7 +11,6 @@ import javafx.collections.ObservableList;
 import org.geantlr.services.AntlrGrammarService;
 import org.geantlr.services.CodeCompletionService;
 import org.geantlr.services.CodeFormattingService;
-import org.geantlr.services.ParseResult;
 import org.geantlr.services.SyntaxError;
 import org.antlr.v4.runtime.Token;
 import javafx.animation.PauseTransition;
@@ -19,9 +18,12 @@ import javafx.application.Platform;
 import javafx.util.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Logger;
 
 @Prototype
 public class EditorViewModel {
+
+    private static final Logger LOG = Logger.getLogger(EditorViewModel.class.getName());
 
     private final StringProperty textContent = new SimpleStringProperty("");
     private final javafx.beans.property.IntegerProperty fontSize = new javafx.beans.property.SimpleIntegerProperty(13);
@@ -344,7 +346,7 @@ public class EditorViewModel {
             isGenerating.set(false);
             Throwable e = generationTask.getException();
             if (e != null) {
-                e.printStackTrace();
+                LOG.severe("Rule generation failed: " + e.getMessage());
             }
         });
 
@@ -358,7 +360,7 @@ public class EditorViewModel {
             plantUmlParsingService.parseDomainModel(content);
             updateSuggestions();
         } catch (java.io.IOException e) {
-            e.printStackTrace();
+            LOG.severe("Failed to load domain model: " + e.getMessage());
         }
     }
 }
