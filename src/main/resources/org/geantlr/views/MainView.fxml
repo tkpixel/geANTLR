@@ -27,6 +27,11 @@
                         <FontIcon iconLiteral="mdi2f-file-code-outline" iconSize="20"/>
                     </graphic>
                 </Button>
+                <Button fx:id="viewGrammarBtn" text="View Grammar" onAction="#viewGrammar">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2e-eye-outline" iconSize="20"/>
+                    </graphic>
+                </Button>
                 <Button fx:id="experimentalModeBtn" text="Experimental Mode" onAction="#toggleExperimentalMode" styleClass="accent">
                     <graphic>
                         <FontIcon iconLiteral="mdi2f-flask-outline" iconSize="20"/>

@@ -11,7 +11,6 @@ module org.geantlr {
     requires antlr4;
     requires antlr4.c3;
 
-    requires io.micronaut.inject;
     requires jakarta.inject;
     requires io.micronaut.core;
     requires io.micronaut.context;
@@ -24,6 +23,7 @@ module org.geantlr {
     requires google.genai;
     requires java.net.http;
     requires java.logging;
+    requires io.micronaut.inject;
     requires net.sourceforge.plantuml;
 
     opens org.geantlr to javafx.fxml;
