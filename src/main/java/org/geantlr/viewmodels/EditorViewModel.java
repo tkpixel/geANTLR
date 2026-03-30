@@ -2,7 +2,11 @@ package org.geantlr.viewmodels;
 
 import io.micronaut.context.annotation.Prototype;
 import jakarta.inject.Inject;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
@@ -26,7 +30,7 @@ public class EditorViewModel {
     private static final Logger LOG = Logger.getLogger(EditorViewModel.class.getName());
 
     private final StringProperty textContent = new SimpleStringProperty("");
-    private final javafx.beans.property.IntegerProperty fontSize = new javafx.beans.property.SimpleIntegerProperty(13);
+    private final IntegerProperty fontSize = new SimpleIntegerProperty(13);
     private final ObservableList<SyntaxError> errors = FXCollections.observableArrayList();
     private final ObservableList<Token> tokens = FXCollections.observableArrayList();
     private final ObservableList<String> suggestedTokens = FXCollections.observableArrayList();
@@ -38,7 +42,8 @@ public class EditorViewModel {
 
     private final ObjectProperty<InsertTextCommand> insertTextCommand = new SimpleObjectProperty<>();
 
-    private final javafx.beans.property.BooleanProperty isGenerating = new javafx.beans.property.SimpleBooleanProperty(false);
+    private final BooleanProperty isGenerating = new SimpleBooleanProperty(false);
+    private final BooleanProperty isParsingDomainModel = new SimpleBooleanProperty(false);
 
     private final StringProperty referenceTemplate = new SimpleStringProperty("");
     private final StringProperty referenceTemplateName = new SimpleStringProperty("");
@@ -56,7 +61,7 @@ public class EditorViewModel {
     private final org.geantlr.services.RuleGenerationService ruleGenerationService;
     private final org.geantlr.services.PlantUmlParsingService plantUmlParsingService;
 
-    public javafx.beans.property.BooleanProperty experimentalModeProperty() {
+    public BooleanProperty experimentalModeProperty() {
         return mainViewModel != null ? mainViewModel.experimentalModeProperty() : null;
     }
 
@@ -213,7 +218,7 @@ public class EditorViewModel {
         this.textContent.set(text);
     }
 
-    public javafx.beans.property.IntegerProperty fontSizeProperty() {
+    public IntegerProperty fontSizeProperty() {
         return fontSize;
     }
 
@@ -237,7 +242,7 @@ public class EditorViewModel {
         return replaceTextCommand;
     }
 
-    public javafx.beans.property.BooleanProperty isGeneratingProperty() {
+    public BooleanProperty isGeneratingProperty() {
         return isGenerating;
     }
 
@@ -350,17 +355,64 @@ public class EditorViewModel {
             }
         });
 
-        new Thread(generationTask).start();
+        Thread.ofVirtual().start(generationTask);
     }
 
     public void loadDomainModel(java.io.File file) {
         if (file == null || !file.exists()) return;
-        try {
-            String content = java.nio.file.Files.readString(file.toPath());
-            plantUmlParsingService.parseDomainModel(content);
+
+        javafx.concurrent.Task<Void> parseTask = new javafx.concurrent.Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                String content = java.nio.file.Files.readString(file.toPath());
+                plantUmlParsingService.parseDomainModel(content);
+                return null;
+            }
+        };
+
+        parseTask.setOnRunning(e -> isParsingDomainModel.set(true));
+        parseTask.setOnSucceeded(e -> {
+            isParsingDomainModel.set(false);
             updateSuggestions();
-        } catch (java.io.IOException e) {
-            LOG.severe("Failed to load domain model: " + e.getMessage());
-        }
+        });
+        parseTask.setOnFailed(e -> {
+            isParsingDomainModel.set(false);
+            Throwable ex = parseTask.getException();
+            LOG.severe("Failed to load domain model: " + (ex != null ? ex.getMessage() : "Unknown error"));
+        });
+
+        Thread.ofVirtual().start(parseTask);
+    }
+
+    public BooleanProperty isParsingDomainModelProperty() {
+        return isParsingDomainModel;
+    }
+
+    public boolean isParsingDomainModel() {
+        return isParsingDomainModel.get();
+    }
+
+    public void loadTemplateAsync(java.io.File file) {
+        if (file == null || !file.exists()) return;
+
+        javafx.concurrent.Task<String> loadTask = new javafx.concurrent.Task<>() {
+            @Override
+            protected String call() throws Exception {
+                return java.nio.file.Files.readString(file.toPath());
+            }
+        };
+
+        loadTask.setOnSucceeded(e -> {
+            String content = loadTask.getValue();
+            referenceTemplate.set(content);
+            referenceTemplateName.set("Template: " + file.getName());
+        });
+
+        loadTask.setOnFailed(e -> {
+            Throwable ex = loadTask.getException();
+            LOG.severe("Failed to read template file: " + (ex != null ? ex.getMessage() : "Unknown error"));
+        });
+
+        Thread.ofVirtual().start(loadTask);
     }
 }

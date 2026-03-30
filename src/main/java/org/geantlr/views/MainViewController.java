@@ -26,10 +26,13 @@ import org.geantlr.viewmodels.EditorViewModel;
 import org.geantlr.viewmodels.MainViewModel;
 import org.geantlr.services.IGrammarLoaderService;
 import org.geantlr.services.DynamicGrammar;
+import org.geantlr.services.TokenHighlightMappingService;
 import org.kordamp.ikonli.javafx.FontIcon;
 import javafx.stage.FileChooser;
 import javafx.stage.DirectoryChooser;
 import javafx.scene.control.Alert;
+import javafx.scene.control.ProgressBar;
+import javafx.concurrent.Task;
 
 @Singleton
 public class MainViewController {
@@ -52,8 +55,12 @@ public class MainViewController {
     @FXML
     private FontIcon themeIcon;
 
+    @FXML
+    private ProgressBar mainProgressBar;
+
     private final MainViewModel viewModel;
     private final IGrammarLoaderService grammarLoaderService;
+    private final TokenHighlightMappingService tokenHighlightMappingService;
     private final ApplicationContext context;
 
     private boolean isDarkMode = true;
@@ -62,14 +69,20 @@ public class MainViewController {
     private final Map<EditorViewModel, Region> editorRegions = new HashMap<>();
 
     @Inject
-    public MainViewController(MainViewModel viewModel, IGrammarLoaderService grammarLoaderService, ApplicationContext context) {
+    public MainViewController(MainViewModel viewModel, IGrammarLoaderService grammarLoaderService, TokenHighlightMappingService tokenHighlightMappingService, ApplicationContext context) {
         this.viewModel = viewModel;
         this.grammarLoaderService = grammarLoaderService;
+        this.tokenHighlightMappingService = tokenHighlightMappingService;
         this.context = context;
     }
 
     @FXML
     public void initialize() {
+        if (mainProgressBar != null) {
+            mainProgressBar.visibleProperty().bind(viewModel.isLoadingGrammarProperty());
+            mainProgressBar.managedProperty().bind(viewModel.isLoadingGrammarProperty());
+        }
+
         // Use an accent button style if provided by AtlantaFX
         themeToggleBtn.getStyleClass().addAll("accent", atlantafx.base.theme.Styles.BUTTON_ICON);
         themeToggleBtn.setAccessibleText("Toggle Theme");
@@ -198,24 +211,31 @@ public class MainViewController {
                 File importDir = controller.getImportDir();
                 File parserFile = controller.getParserFile();
 
-                if (importDir != null) {
-                    grammarLoaderService.addImportDirectory(importDir);
-                }
+                Task<DynamicGrammar> loadTask = viewModel.loadGrammarAsync(importDir, parserFile, tokenHighlightMappingService);
 
-                DynamicGrammar dynamicGrammar = grammarLoaderService.loadDynamicGrammar(importDir, parserFile);
-                viewModel.setDynamicGrammar(dynamicGrammar);
-                context.getBean(org.geantlr.services.TokenHighlightMappingService.class).buildVocabularyMapping(dynamicGrammar.getVocabulary());
+                loadTask.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_SUCCEEDED, e -> {
+                    DynamicGrammar dynamicGrammar = loadTask.getValue();
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("Grammar Loaded");
+                    alert.setHeaderText("Success");
+                    String rulesMsg = dynamicGrammar.getParserGrammar() != null
+                        ? "Parser rules: " + dynamicGrammar.getParserGrammar().rules.size()
+                        : "Lexer rules only";
 
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("Grammar Loaded");
-                alert.setHeaderText("Success");
-                String rulesMsg = dynamicGrammar.getParserGrammar() != null
-                    ? "Parser rules: " + dynamicGrammar.getParserGrammar().rules.size()
-                    : "Lexer rules only";
+                    alert.setContentText("Grammar '" + parserFile.getName() + "' loaded and compiled successfully.\n" +
+                                         rulesMsg);
+                    alert.showAndWait();
+                });
 
-                alert.setContentText("Grammar '" + parserFile.getName() + "' loaded and compiled successfully.\n" +
-                                     rulesMsg);
-                alert.showAndWait();
+                loadTask.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_FAILED, e -> {
+                    Throwable ex = loadTask.getException();
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Error Loading Grammar");
+                    alert.setHeaderText("Failed to load or compile grammar");
+                    alert.setContentText(ex != null ? ex.getMessage() : "Unknown error");
+                    if (ex != null) ex.printStackTrace();
+                    alert.showAndWait();
+                });
             }
         } catch (Exception e) {
             Alert alert = new Alert(Alert.AlertType.ERROR);

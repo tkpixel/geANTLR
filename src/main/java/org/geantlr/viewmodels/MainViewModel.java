@@ -11,7 +11,11 @@ import jakarta.inject.Singleton;
 import jakarta.inject.Inject;
 import org.geantlr.services.DynamicGrammar;
 import org.geantlr.services.IGrammarLoaderService;
+import org.geantlr.services.TokenHighlightMappingService;
 import java.io.File;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.concurrent.Task;
 
 @Singleton
 public class MainViewModel {
@@ -26,6 +30,8 @@ public class MainViewModel {
 
     // Property to toggle experimental mode
     private final javafx.beans.property.BooleanProperty experimentalMode = new javafx.beans.property.SimpleBooleanProperty(false);
+
+    private final BooleanProperty isLoadingGrammar = new SimpleBooleanProperty(false);
 
     @Inject
     public MainViewModel(IGrammarLoaderService grammarLoaderService) {
@@ -87,5 +93,41 @@ public class MainViewModel {
 
     public DynamicGrammar loadDynamicGrammar(File grammarFile) throws Exception {
         return grammarLoaderService.loadDynamicGrammar(grammarFile);
+    }
+
+    public BooleanProperty isLoadingGrammarProperty() {
+        return isLoadingGrammar;
+    }
+
+    public boolean isLoadingGrammar() {
+        return isLoadingGrammar.get();
+    }
+
+    public Task<DynamicGrammar> loadGrammarAsync(File importDir, File parserFile, TokenHighlightMappingService tokenHighlightMappingService) {
+        Task<DynamicGrammar> task = new Task<>() {
+            @Override
+            protected DynamicGrammar call() throws Exception {
+                if (importDir != null) {
+                    grammarLoaderService.addImportDirectory(importDir);
+                }
+                DynamicGrammar grammar = grammarLoaderService.loadDynamicGrammar(importDir, parserFile);
+                if (grammar != null) {
+                    tokenHighlightMappingService.buildVocabularyMapping(grammar.getVocabulary());
+                }
+                return grammar;
+            }
+        };
+
+        task.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_RUNNING, e -> isLoadingGrammar.set(true));
+        task.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_SUCCEEDED, e -> {
+            isLoadingGrammar.set(false);
+            setDynamicGrammar(task.getValue());
+        });
+        task.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_FAILED, e -> isLoadingGrammar.set(false));
+        task.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_CANCELLED, e -> isLoadingGrammar.set(false));
+
+        Thread.ofVirtual().start(task);
+
+        return task;
     }
 }

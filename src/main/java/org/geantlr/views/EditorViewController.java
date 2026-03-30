@@ -56,6 +56,9 @@ public class EditorViewController {
     private ProgressIndicator generationProgress;
 
     @FXML
+    private ProgressIndicator domainModelProgress;
+
+    @FXML
     private Button selectTemplateButton;
 
     @FXML
@@ -229,15 +232,14 @@ public class EditorViewController {
                 fileChooser.setTitle("Select Template Rule File");
                 File selectedFile = fileChooser.showOpenDialog(selectTemplateButton.getScene().getWindow());
                 if (selectedFile != null) {
-                    try {
-                        String content = Files.readString(selectedFile.toPath());
-                        this.viewModel.referenceTemplateProperty().set(content);
-                        this.viewModel.referenceTemplateNameProperty().set("Template: " + selectedFile.getName());
-                    } catch (Exception ex) {
-                        LOG.severe("Failed to read template file: " + ex.getMessage());
-                    }
+                    this.viewModel.loadTemplateAsync(selectedFile);
                 }
             });
+        }
+
+        if (domainModelProgress != null) {
+            domainModelProgress.visibleProperty().bind(this.viewModel.isParsingDomainModelProperty());
+            domainModelProgress.managedProperty().bind(this.viewModel.isParsingDomainModelProperty());
         }
 
         if (editorCodeArea != null) {
