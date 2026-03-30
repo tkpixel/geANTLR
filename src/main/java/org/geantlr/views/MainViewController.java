@@ -44,6 +44,9 @@ public class MainViewController {
     private Button toggleEditorsBtn;
 
     @FXML
+    private Button viewGrammarBtn;
+
+    @FXML
     private Button themeToggleBtn;
 
     @FXML
@@ -78,6 +81,13 @@ public class MainViewController {
             toggleEditorsBtn.setAccessibleText("Toggle Editors");
             toggleEditorsBtn.setAccessibleHelp("Switches between single and split editor views.");
             toggleEditorsBtn.setTooltip(new javafx.scene.control.Tooltip("Toggle Editors"));
+        }
+
+        if (viewGrammarBtn != null) {
+            viewGrammarBtn.setAccessibleText("View Grammar");
+            viewGrammarBtn.setAccessibleHelp("Opens the currently loaded grammar in a new window.");
+            viewGrammarBtn.setTooltip(new javafx.scene.control.Tooltip("View Grammar"));
+            viewGrammarBtn.disableProperty().bind(viewModel.dynamicGrammarProperty().isNull());
         }
 
         // Listen to active editors list
@@ -131,6 +141,40 @@ public class MainViewController {
             viewModel.addEditor(context.getBean(EditorViewModel.class));
         } else if (viewModel.getActiveEditors().size() == 2) {
             viewModel.removeEditor(viewModel.getActiveEditors().get(1));
+        }
+    }
+
+    @FXML
+    private void viewGrammar() {
+        if (viewModel.getDynamicGrammar() == null) {
+            return;
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/geantlr/views/GrammarView.fxml"));
+            loader.setControllerFactory(context.getBean(FxmlControllerFactory.class));
+            javafx.scene.Parent root = loader.load();
+            GrammarViewController controller = loader.getController();
+
+            controller.setGrammarText(viewModel.getDynamicGrammar().getRawGrammarText());
+
+            Stage stage = new Stage();
+            stage.setTitle("Current Grammar");
+            javafx.scene.Scene scene = new javafx.scene.Scene(root, 600, 800);
+
+            // Load custom theme overrides
+            String customCss = getClass().getResource("/org/geantlr/theme.css").toExternalForm();
+            scene.getStylesheets().add(customCss);
+
+            stage.setScene(scene);
+            stage.show();
+        } catch (IOException e) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Error Displaying Grammar");
+            alert.setHeaderText("Failed to load grammar view");
+            alert.setContentText(e.getMessage());
+            e.printStackTrace();
+            alert.showAndWait();
         }
     }
 

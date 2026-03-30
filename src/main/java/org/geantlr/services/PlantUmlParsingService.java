@@ -47,31 +47,31 @@ public class PlantUmlParsingService {
             if (!reader.getBlocks().isEmpty()) {
                 var diagram = reader.getBlocks().get(0).getDiagram();
                 if (diagram instanceof ClassDiagram cd) {
-                    var classes = cd.getEntityFactory().root().getChildren();
+                    // Archie: In recent PlantUML versions (v1.2024.3+), getEntityFactory() was replaced by directly inheriting from it in CucaDiagram.
+                    // Using cd.leafs() to retrieve all leaf entities in the diagram.
+                    var classes = cd.leafs();
 
-                    for (var node : classes) {
-                        String className = node.getName();
+                    for (var entity : classes) {
+                        String className = entity.getName();
                         List<String> fields = new ArrayList<>();
-                        var data = node.getData();
 
-                        if (data instanceof Entity entity) {
-                            LeafType type = entity.getLeafType();
-                            if (type == LeafType.CLASS || type == LeafType.ENUM || type == LeafType.INTERFACE || type == LeafType.ABSTRACT_CLASS) {
-                                Map<String, String> fieldTypes = new HashMap<>();
-                                for (CharSequence member : entity.getBodier().getFieldsToDisplay()) {
-                                    String raw = member.toString();
-                                    String clean = cleanMember(raw);
-                                    if (!clean.isEmpty()) {
-                                        fields.add(clean);
-                                        extractFieldType(raw, clean, fieldTypes);
-                                    }
+                        LeafType type = entity.getLeafType();
+                        if (type == LeafType.CLASS || type == LeafType.ENUM || type == LeafType.INTERFACE || type == LeafType.ABSTRACT_CLASS) {
+                            Map<String, String> fieldTypes = new HashMap<>();
+                            // getFieldsToDisplay() returns a Display object which implements Iterable<CharSequence>
+                            for (CharSequence member : entity.getBodier().getFieldsToDisplay()) {
+                                String raw = member.toString();
+                                String clean = cleanMember(raw);
+                                if (!clean.isEmpty()) {
+                                    fields.add(clean);
+                                    extractFieldType(raw, clean, fieldTypes);
                                 }
-                                for (CharSequence member : entity.getBodier().getMethodsToDisplay()) {
-                                    String clean = cleanMember(member.toString());
-                                    if (!clean.isEmpty()) fields.add(clean);
-                                }
-                                domainModelCache.put(className, new DomainClass(className, fields, fieldTypes));
                             }
+                            for (CharSequence member : entity.getBodier().getMethodsToDisplay()) {
+                                String clean = cleanMember(member.toString());
+                                if (!clean.isEmpty()) fields.add(clean);
+                            }
+                            domainModelCache.put(className, new DomainClass(className, fields, fieldTypes));
                         }
                     }
                 }

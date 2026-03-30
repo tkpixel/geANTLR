@@ -11,7 +11,7 @@ module org.geantlr {
     requires antlr4;
     requires antlr4.c3;
 
-    requires io.micronaut.inject;
+    requires io.micronaut.micronaut_inject;
     requires jakarta.inject;
     requires io.micronaut.core;
     requires io.micronaut.context;

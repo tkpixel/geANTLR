@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import jfx.incubator.scene.control.richtext.CodeArea?>
+<?import javafx.scene.layout.BorderPane?>
+
+<BorderPane xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="org.geantlr.views.GrammarViewController"
+           style="-fx-border-color: gray; -fx-background-color: -color-bg-default;">
+
+    <center>
+        <CodeArea fx:id="grammarCodeArea" wrapText="true" styleClass="editor-code-area"/>
+    </center>
+
+</BorderPane>
