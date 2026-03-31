@@ -49,17 +49,6 @@
                     <Insets top="5" right="5" bottom="5" left="5"/>
                 </padding>
             </FlowPane>
-            <HBox spacing="10" alignment="CENTER_LEFT" style="-fx-background-color: -color-bg-subtle; -fx-border-color: -color-border-default; -fx-border-width: 1 0 0 0;">
-                <padding>
-                    <Insets top="5" right="5" bottom="5" left="5"/>
-                </padding>
-                <Button fx:id="loadDomainModelButton" text="Load Domain Model (.puml)" styleClass="button-outlined">
-                    <graphic>
-                        <FontIcon iconLiteral="mdi2f-file-tree" iconSize="16"/>
-                    </graphic>
-                </Button>
-                <ProgressIndicator fx:id="domainModelProgress" visible="false" managed="false" prefWidth="20" prefHeight="20"/>
-            </HBox>
         </VBox>
     </bottom>
 

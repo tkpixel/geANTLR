@@ -44,13 +44,13 @@ public class MainViewController {
     private SplitPane editorSplitPane;
 
     @FXML
-    private Button toggleEditorsBtn;
-
-    @FXML
     private Button viewGrammarBtn;
 
     @FXML
-    private Button themeToggleBtn;
+    private Button loadDomainModelButton;
+
+    @FXML
+    private javafx.scene.control.ProgressIndicator domainModelProgress;
 
     @FXML
     private FontIcon themeIcon;
@@ -83,24 +83,18 @@ public class MainViewController {
             mainProgressBar.managedProperty().bind(viewModel.isLoadingGrammarProperty());
         }
 
-        // Use an accent button style if provided by AtlantaFX
-        themeToggleBtn.getStyleClass().addAll("accent", atlantafx.base.theme.Styles.BUTTON_ICON);
-        themeToggleBtn.setAccessibleText("Toggle Theme");
-        themeToggleBtn.setAccessibleHelp("Switches between light and dark themes.");
-        themeToggleBtn.setTooltip(new javafx.scene.control.Tooltip("Toggle Theme"));
-
-        if (toggleEditorsBtn != null) {
-            toggleEditorsBtn.getStyleClass().addAll(atlantafx.base.theme.Styles.BUTTON_ICON);
-            toggleEditorsBtn.setAccessibleText("Toggle Editors");
-            toggleEditorsBtn.setAccessibleHelp("Switches between single and split editor views.");
-            toggleEditorsBtn.setTooltip(new javafx.scene.control.Tooltip("Toggle Editors"));
-        }
-
         if (viewGrammarBtn != null) {
             viewGrammarBtn.setAccessibleText("View Grammar");
             viewGrammarBtn.setAccessibleHelp("Opens the currently loaded grammar in a new window.");
             viewGrammarBtn.setTooltip(new javafx.scene.control.Tooltip("View Grammar"));
             viewGrammarBtn.disableProperty().bind(viewModel.dynamicGrammarProperty().isNull());
+        }
+
+        if (domainModelProgress != null) {
+            updateDomainModelProgressBinding();
+            viewModel.getActiveEditors().addListener((ListChangeListener<EditorViewModel>) change -> {
+                updateDomainModelProgressBinding();
+            });
         }
 
         // Listen to active editors list
@@ -155,6 +149,54 @@ public class MainViewController {
         } else if (viewModel.getActiveEditors().size() == 2) {
             viewModel.removeEditor(viewModel.getActiveEditors().get(1));
         }
+    }
+
+    @FXML
+    private void loadDomainModel() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Load Domain Model (.puml)");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PlantUML Files", "*.puml", "*.txt"));
+        File selectedFile = fileChooser.showOpenDialog(loadDomainModelButton.getScene().getWindow());
+        if (selectedFile != null) {
+            for (EditorViewModel editor : viewModel.getActiveEditors()) {
+                editor.loadDomainModel(selectedFile);
+            }
+        }
+    }
+
+    private void updateDomainModelProgressBinding() {
+        if (domainModelProgress == null) return;
+
+        domainModelProgress.visibleProperty().unbind();
+        domainModelProgress.managedProperty().unbind();
+
+        if (viewModel.getActiveEditors().isEmpty()) {
+            domainModelProgress.setVisible(false);
+            domainModelProgress.setManaged(false);
+            return;
+        }
+
+        // Create a custom binding that is true if ANY active editor is parsing
+        javafx.beans.binding.BooleanBinding anyParsing = new javafx.beans.binding.BooleanBinding() {
+            {
+                for (EditorViewModel editor : viewModel.getActiveEditors()) {
+                    super.bind(editor.isParsingDomainModelProperty());
+                }
+            }
+
+            @Override
+            protected boolean computeValue() {
+                for (EditorViewModel editor : viewModel.getActiveEditors()) {
+                    if (editor.isParsingDomainModelProperty().get()) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        };
+
+        domainModelProgress.visibleProperty().bind(anyParsing);
+        domainModelProgress.managedProperty().bind(anyParsing);
     }
 
     @FXML

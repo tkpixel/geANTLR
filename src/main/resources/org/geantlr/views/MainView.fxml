@@ -23,35 +23,48 @@
                 </center>
             </HeaderBar>
             <ToolBar>
-                <Button text="Load Grammar" onAction="#loadGrammar">
+                <Button text="Load Grammar" onAction="#loadGrammar" styleClass="button-outlined">
                     <graphic>
                         <FontIcon iconLiteral="mdi2f-file-code-outline" iconSize="20"/>
                     </graphic>
                 </Button>
-                <Button fx:id="viewGrammarBtn" text="View Grammar" onAction="#viewGrammar">
+                <Button fx:id="viewGrammarBtn" text="View Grammar" onAction="#viewGrammar" styleClass="button-outlined">
                     <graphic>
                         <FontIcon iconLiteral="mdi2e-eye-outline" iconSize="20"/>
                     </graphic>
                 </Button>
-                <Button fx:id="experimentalModeBtn" text="Experimental Mode" onAction="#toggleExperimentalMode" styleClass="accent">
+                <Button fx:id="loadDomainModelButton" text="Load Domain Model (.puml)" onAction="#loadDomainModel" styleClass="button-outlined">
                     <graphic>
-                        <FontIcon iconLiteral="mdi2f-flask-outline" iconSize="20"/>
+                        <FontIcon iconLiteral="mdi2f-file-tree" iconSize="16"/>
                     </graphic>
                 </Button>
+                <ProgressIndicator fx:id="domainModelProgress" visible="false" managed="false" prefWidth="20" prefHeight="20"/>
 
                 <!-- Spacer -->
                 <HBox HBox.hgrow="ALWAYS" />
 
-                <Button fx:id="toggleEditorsBtn" onAction="#toggleEditors">
+                <javafx.scene.control.MenuButton styleClass="button-outlined, button-icon, no-arrow">
                     <graphic>
-                        <FontIcon iconLiteral="mdi2p-page-layout-body" iconSize="20"/>
+                        <FontIcon iconLiteral="mdi2d-dots-horizontal" iconSize="20"/>
                     </graphic>
-                </Button>
-                <Button fx:id="themeToggleBtn" onAction="#toggleTheme">
-                    <graphic>
-                        <FontIcon fx:id="themeIcon" iconLiteral="mdi2w-white-balance-sunny" iconSize="20"/>
-                    </graphic>
-                </Button>
+                    <items>
+                        <javafx.scene.control.MenuItem text="Toggle Theme" onAction="#toggleTheme">
+                            <graphic>
+                                <FontIcon fx:id="themeIcon" iconLiteral="mdi2w-white-balance-sunny" iconSize="20"/>
+                            </graphic>
+                        </javafx.scene.control.MenuItem>
+                        <javafx.scene.control.MenuItem text="Toggle Editors" onAction="#toggleEditors">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2p-page-layout-body" iconSize="20"/>
+                            </graphic>
+                        </javafx.scene.control.MenuItem>
+                        <javafx.scene.control.MenuItem text="Experimental Mode" onAction="#toggleExperimentalMode">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2f-flask-outline" iconSize="20"/>
+                            </graphic>
+                        </javafx.scene.control.MenuItem>
+                    </items>
+                </javafx.scene.control.MenuButton>
             </ToolBar>
             <ProgressBar fx:id="mainProgressBar" maxWidth="Infinity" progress="-1" visible="false" managed="false"/>
         </VBox>

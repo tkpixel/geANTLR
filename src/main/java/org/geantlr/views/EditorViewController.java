@@ -56,9 +56,6 @@ public class EditorViewController {
     private ProgressIndicator generationProgress;
 
     @FXML
-    private ProgressIndicator domainModelProgress;
-
-    @FXML
     private Button selectTemplateButton;
 
     @FXML
@@ -66,9 +63,6 @@ public class EditorViewController {
 
     @FXML
     private javafx.scene.control.ComboBox<String> modelComboBox;
-
-    @FXML
-    private Button loadDomainModelButton;
 
     private final javafx.scene.control.Tooltip errorTooltip = new javafx.scene.control.Tooltip();
     private final PauseTransition hoverPause = new PauseTransition(Duration.millis(300));
@@ -179,18 +173,6 @@ public class EditorViewController {
                 }
             });
         }
-
-        if (loadDomainModelButton != null) {
-            loadDomainModelButton.setOnAction(e -> {
-                FileChooser fileChooser = new FileChooser();
-                fileChooser.setTitle("Load Domain Model (.puml)");
-                fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PlantUML Files", "*.puml", "*.txt"));
-                File selectedFile = fileChooser.showOpenDialog(loadDomainModelButton.getScene().getWindow());
-                if (selectedFile != null) {
-                    this.viewModel.loadDomainModel(selectedFile);
-                }
-            });
-        }
     }
 
     public void setViewModel(EditorViewModel viewModel) {
@@ -235,11 +217,6 @@ public class EditorViewController {
                     this.viewModel.loadTemplateAsync(selectedFile);
                 }
             });
-        }
-
-        if (domainModelProgress != null) {
-            domainModelProgress.visibleProperty().bind(this.viewModel.isParsingDomainModelProperty());
-            domainModelProgress.managedProperty().bind(this.viewModel.isParsingDomainModelProperty());
         }
 
         if (editorCodeArea != null) {
