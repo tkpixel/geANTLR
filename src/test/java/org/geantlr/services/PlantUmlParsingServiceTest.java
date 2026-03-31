@@ -179,7 +179,8 @@ class PlantUmlParsingServiceTest {
 
         DomainClass datenpunkt = cache.get("Datenpunkt");
         assertNotNull(datenpunkt, "Datenpunkt class should be in cache");
-        assertTrue(datenpunkt.fields().isEmpty(), "Datenpunkt is a stub and should have no fields");
+        assertFalse(datenpunkt.fields().isEmpty(), "Datenpunkt should have fields");
+        assertTrue(datenpunkt.fields().contains("id"), "Datenpunkt should have field 'id'");
     }
 
     @Test

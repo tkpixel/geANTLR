@@ -159,16 +159,26 @@ public class EditorViewModel {
             String symbolicName = vocab.getSymbolicName(token.getType());
             int startLine = token.getLine();
             int startCharPos = token.getCharPositionInLine();
-            String[] lines = text.split("\r?\n", -1);
 
-            for (int i = 0; i < lines.length; i++) {
-                int currentLine = startLine + i;
-                int startInLine = (i == 0) ? startCharPos : 0;
-                int endInLine = startInLine + lines[i].length();
-
+            // Performance Optimization: Fast-path for single-line tokens to avoid regex compilation and array allocation
+            if (text.indexOf('\n') == -1) {
+                int startInLine = startCharPos;
+                int endInLine = startInLine + text.length();
                 if (startInLine < endInLine) {
-                    styles.computeIfAbsent(currentLine, k -> new java.util.ArrayList<>())
-                          .add(new TokenStyle(startInLine, endInLine, symbolicName, token.getType(), token.getText()));
+                    styles.computeIfAbsent(startLine, k -> new java.util.ArrayList<>())
+                          .add(new TokenStyle(startInLine, endInLine, symbolicName, token.getType(), text));
+                }
+            } else {
+                // Fallback for multi-line tokens (e.g. block comments)
+                String[] lines = text.split("\r?\n", -1);
+                for (int i = 0; i < lines.length; i++) {
+                    int currentLine = startLine + i;
+                    int startInLine = (i == 0) ? startCharPos : 0;
+                    int endInLine = startInLine + lines[i].length();
+                    if (startInLine < endInLine) {
+                        styles.computeIfAbsent(currentLine, k -> new java.util.ArrayList<>())
+                              .add(new TokenStyle(startInLine, endInLine, symbolicName, token.getType(), token.getText()));
+                    }
                 }
             }
         }
