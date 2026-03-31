@@ -5,7 +5,6 @@
 <?import javafx.scene.control.MenuButton?>
 <?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.control.ProgressBar?>
-<?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.layout.BorderPane?>
@@ -16,7 +15,7 @@
 
 <BorderPane xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="org.geantlr.views.MainViewController"
-            styleClass="background">
+            styleClass="background, main-view">
 
     <top>
         <VBox>
@@ -41,7 +40,7 @@
                         <FontIcon iconLiteral="mdi2f-file-tree" iconSize="16"/>
                     </graphic>
                 </Button>
-                <ProgressIndicator fx:id="domainModelProgress" visible="false" managed="false" prefWidth="20" prefHeight="20"/>
+
 
                 <!-- Spacer -->
                 <HBox HBox.hgrow="ALWAYS" />

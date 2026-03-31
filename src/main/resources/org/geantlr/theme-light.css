@@ -1,0 +1,16 @@
+/* ── Light-Mode Overrides ────────────────────────────────────────────── */
+/* Wird von MainViewController.toggleTheme() dynamisch geladen/entfernt. */
+.root {
+    -geantlr-editor-bg:          #f8f8f8;
+    -geantlr-editor-fg:          #1a1a1a;
+    -geantlr-syntax-keyword:     #af5f00;
+    -geantlr-syntax-string:      #296b29;
+    -geantlr-syntax-number:      #1750a0;
+    -geantlr-syntax-comment:     #7a7a7a;
+    -geantlr-syntax-annotation:  #8a6800;
+    -geantlr-syntax-operator:    #444444;
+    -geantlr-tooltip-bg:         #ffffff;
+    -geantlr-tooltip-fg:         #1a1a1a;
+    -geantlr-tooltip-border:     #cccccc;
+}
+
