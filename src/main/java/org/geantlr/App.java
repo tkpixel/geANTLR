@@ -35,7 +35,7 @@ public class App extends Application {
         fxmlLoader.setControllerFactory(context.getBean(FxmlControllerFactory.class));
         Parent root = fxmlLoader.load();
 
-        Scene scene = new Scene(root, 800, 600);
+        Scene scene = new Scene(root, 1200, 600);
 
         // Load custom theme overrides
         String customCss = getClass().getResource("/org/geantlr/theme.css").toExternalForm();

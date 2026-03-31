@@ -44,13 +44,11 @@ public class MainViewController {
     private SplitPane editorSplitPane;
 
     @FXML
-    private Button toggleEditorsBtn;
-
-    @FXML
     private Button viewGrammarBtn;
 
     @FXML
-    private Button themeToggleBtn;
+    private Button loadDomainModelButton;
+
 
     @FXML
     private FontIcon themeIcon;
@@ -79,21 +77,10 @@ public class MainViewController {
     @FXML
     public void initialize() {
         if (mainProgressBar != null) {
-            mainProgressBar.visibleProperty().bind(viewModel.isLoadingGrammarProperty());
-            mainProgressBar.managedProperty().bind(viewModel.isLoadingGrammarProperty());
-        }
-
-        // Use an accent button style if provided by AtlantaFX
-        themeToggleBtn.getStyleClass().addAll("accent", atlantafx.base.theme.Styles.BUTTON_ICON);
-        themeToggleBtn.setAccessibleText("Toggle Theme");
-        themeToggleBtn.setAccessibleHelp("Switches between light and dark themes.");
-        themeToggleBtn.setTooltip(new javafx.scene.control.Tooltip("Toggle Theme"));
-
-        if (toggleEditorsBtn != null) {
-            toggleEditorsBtn.getStyleClass().addAll(atlantafx.base.theme.Styles.BUTTON_ICON);
-            toggleEditorsBtn.setAccessibleText("Toggle Editors");
-            toggleEditorsBtn.setAccessibleHelp("Switches between single and split editor views.");
-            toggleEditorsBtn.setTooltip(new javafx.scene.control.Tooltip("Toggle Editors"));
+            updateMainProgressBarBinding();
+            viewModel.getActiveEditors().addListener((ListChangeListener<EditorViewModel>) change -> {
+                updateMainProgressBarBinding();
+            });
         }
 
         if (viewGrammarBtn != null) {
@@ -102,6 +89,7 @@ public class MainViewController {
             viewGrammarBtn.setTooltip(new javafx.scene.control.Tooltip("View Grammar"));
             viewGrammarBtn.disableProperty().bind(viewModel.dynamicGrammarProperty().isNull());
         }
+
 
         // Listen to active editors list
         viewModel.getActiveEditors().addListener((ListChangeListener<EditorViewModel>) change -> {
@@ -131,15 +119,35 @@ public class MainViewController {
         viewModel.addEditor(context.getBean(EditorViewModel.class));
     }
 
+    private static final String LIGHT_CSS_RESOURCE = "/org/geantlr/theme-light.css";
+
     @FXML
     private void toggleTheme() {
         isDarkMode = !isDarkMode;
         if (isDarkMode) {
             Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
             themeIcon.setIconLiteral("mdi2m-moon-waning-crescent");
+            // Light-Override-CSS entfernen
+            if (editorSplitPane.getScene() != null) {
+                String lightCss = getClass().getResource(LIGHT_CSS_RESOURCE) != null
+                    ? getClass().getResource(LIGHT_CSS_RESOURCE).toExternalForm() : null;
+                if (lightCss != null) {
+                    editorSplitPane.getScene().getStylesheets().remove(lightCss);
+                }
+            }
         } else {
             Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
             themeIcon.setIconLiteral("mdi2w-white-balance-sunny");
+            // Light-Override-CSS hinzufügen
+            if (editorSplitPane.getScene() != null) {
+                java.net.URL lightCssUrl = getClass().getResource(LIGHT_CSS_RESOURCE);
+                if (lightCssUrl != null) {
+                    String lightCss = lightCssUrl.toExternalForm();
+                    if (!editorSplitPane.getScene().getStylesheets().contains(lightCss)) {
+                        editorSplitPane.getScene().getStylesheets().add(lightCss);
+                    }
+                }
+            }
         }
     }
 
@@ -158,6 +166,48 @@ public class MainViewController {
     }
 
     @FXML
+    private void loadDomainModel() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Load Domain Model (.puml)");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PlantUML Files", "*.puml", "*.txt"));
+        File selectedFile = fileChooser.showOpenDialog(loadDomainModelButton.getScene().getWindow());
+        if (selectedFile != null) {
+            for (EditorViewModel editor : viewModel.getActiveEditors()) {
+                editor.loadDomainModel(selectedFile);
+            }
+        }
+    }
+
+    private void updateMainProgressBarBinding() {
+        if (mainProgressBar == null) return;
+
+        mainProgressBar.visibleProperty().unbind();
+        mainProgressBar.managedProperty().unbind();
+
+        // anyParsing: true wenn irgendein Editor gerade das Domain Model parst
+        javafx.beans.binding.BooleanBinding anyParsing = new javafx.beans.binding.BooleanBinding() {
+            {
+                super.bind(viewModel.isLoadingGrammarProperty());
+                for (EditorViewModel editor : viewModel.getActiveEditors()) {
+                    super.bind(editor.isParsingDomainModelProperty());
+                }
+            }
+
+            @Override
+            protected boolean computeValue() {
+                if (viewModel.isLoadingGrammarProperty().get()) return true;
+                for (EditorViewModel editor : viewModel.getActiveEditors()) {
+                    if (editor.isParsingDomainModelProperty().get()) return true;
+                }
+                return false;
+            }
+        };
+
+        mainProgressBar.visibleProperty().bind(anyParsing);
+        mainProgressBar.managedProperty().bind(anyParsing);
+    }
+
+    @FXML
     private void viewGrammar() {
         if (viewModel.getDynamicGrammar() == null) {
             return;
@@ -173,13 +223,25 @@ public class MainViewController {
 
             Stage stage = new Stage();
             stage.setTitle("Current Grammar");
-            javafx.scene.Scene scene = new javafx.scene.Scene(root, 600, 800);
+            stage.initStyle(javafx.stage.StageStyle.EXTENDED);
+            javafx.scene.Scene grammarScene = new javafx.scene.Scene(root, 600, 800);
 
-            // Load custom theme overrides
-            String customCss = getClass().getResource("/org/geantlr/theme.css").toExternalForm();
-            scene.getStylesheets().add(customCss);
+            // Stylesheets der Haupt-Scene übernehmen (inkl. theme-light.css wenn aktiv)
+            javafx.scene.Scene mainScene = editorSplitPane.getScene();
+            if (mainScene != null) {
+                grammarScene.getStylesheets().setAll(mainScene.getStylesheets());
+                // Bei Theme-Wechsel synchron halten
+                mainScene.getStylesheets().addListener(
+                    (javafx.collections.ListChangeListener<String>) _ ->
+                        grammarScene.getStylesheets().setAll(mainScene.getStylesheets())
+                );
+            } else {
+                // Fallback: nur theme.css
+                String customCss = getClass().getResource("/org/geantlr/theme.css").toExternalForm();
+                grammarScene.getStylesheets().add(customCss);
+            }
 
-            stage.setScene(scene);
+            stage.setScene(grammarScene);
             stage.show();
         } catch (IOException e) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
@@ -201,10 +263,20 @@ public class MainViewController {
 
             Stage dialogStage = new Stage();
             dialogStage.setTitle("Load Split Grammars");
+            dialogStage.initStyle(javafx.stage.StageStyle.EXTENDED);
             dialogStage.initModality(javafx.stage.Modality.WINDOW_MODAL);
             dialogStage.initOwner(editorSplitPane.getScene().getWindow());
-            javafx.scene.Scene scene = new javafx.scene.Scene(root);
-            dialogStage.setScene(scene);
+            javafx.scene.Scene dialogScene = new javafx.scene.Scene(root);
+            // Stylesheets der Haupt-Scene übernehmen (inkl. theme-light.css wenn aktiv)
+            javafx.scene.Scene mainScene = editorSplitPane.getScene();
+            if (mainScene != null) {
+                dialogScene.getStylesheets().setAll(mainScene.getStylesheets());
+                mainScene.getStylesheets().addListener(
+                    (javafx.collections.ListChangeListener<String>) _ ->
+                        dialogScene.getStylesheets().setAll(mainScene.getStylesheets())
+                );
+            }
+            dialogStage.setScene(dialogScene);
             dialogStage.showAndWait();
 
             if (controller.isLoadConfirmed()) {

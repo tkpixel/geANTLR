@@ -19,7 +19,6 @@ import javafx.animation.PauseTransition;
 import javafx.util.Duration;
 import javafx.stage.FileChooser;
 import java.io.File;
-import java.nio.file.Files;
 import java.util.Objects;
 import java.util.logging.Logger;
 import jfx.incubator.scene.control.richtext.CodeArea;
@@ -56,9 +55,6 @@ public class EditorViewController {
     private ProgressIndicator generationProgress;
 
     @FXML
-    private ProgressIndicator domainModelProgress;
-
-    @FXML
     private Button selectTemplateButton;
 
     @FXML
@@ -66,9 +62,6 @@ public class EditorViewController {
 
     @FXML
     private javafx.scene.control.ComboBox<String> modelComboBox;
-
-    @FXML
-    private Button loadDomainModelButton;
 
     private final javafx.scene.control.Tooltip errorTooltip = new javafx.scene.control.Tooltip();
     private final PauseTransition hoverPause = new PauseTransition(Duration.millis(300));
@@ -89,19 +82,15 @@ public class EditorViewController {
         if (editorCodeArea != null) {
             editorCodeArea.setLineNumbersEnabled(true);
 
-            // Style tooltip for Darcula / dark theme
-            errorTooltip.setStyle(
-                "-fx-background-color: #3c3f41; -fx-text-fill: #bbbbbb; " +
-                "-fx-border-color: #646464; -fx-padding: 8px; -fx-font-size: 11pt;"
-            );
+            // Style tooltip via CSS class for theme-aware colours
+            errorTooltip.getStyleClass().add("error-tooltip");
             errorTooltip.setWrapText(true);
             errorTooltip.setMaxWidth(500);
 
             // Fired after the hover delay – show the tooltip if still over an error
-            hoverPause.setOnFinished(e -> {
+            hoverPause.setOnFinished(_ -> {
                 if (viewModel == null || editorCodeArea.getScene() == null) return;
 
-                // getTextPosition() takes SCREEN coordinates (it converts internally)
                 TextPos pos = editorCodeArea.getTextPosition(lastScreenX, lastScreenY);
                 if (pos == null) {
                     LOG.warning("[Hover] getTextPosition returned null for screen=(" + lastScreenX + "," + lastScreenY + ")");
@@ -135,7 +124,6 @@ public class EditorViewController {
                 double screenX = event.getScreenX();
                 double screenY = event.getScreenY();
 
-                // getTextPosition() takes SCREEN coordinates (it converts internally)
                 TextPos pos = editorCodeArea.getTextPosition(screenX, screenY);
 
                 SyntaxError errorUnderCursor = (pos != null)
@@ -160,13 +148,13 @@ public class EditorViewController {
             editorCodeArea.addEventFilter(MouseEvent.MOUSE_MOVED, mouseHandler);
             editorCodeArea.addEventFilter(MouseEvent.MOUSE_DRAGGED, mouseHandler);
 
-            editorCodeArea.addEventFilter(MouseEvent.MOUSE_EXITED, event -> {
+            editorCodeArea.addEventFilter(MouseEvent.MOUSE_EXITED, _ -> {
                 errorTooltip.hide();
                 lastHoveredError = null;
                 hoverPause.stop();
             });
 
-            editorCodeArea.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            editorCodeArea.sceneProperty().addListener((_, _, newScene) -> {
                 if (newScene != null) {
                     newScene.getAccelerators().put(
                         new KeyCodeCombination(KeyCode.F, KeyCombination.SHORTCUT_DOWN, KeyCombination.SHIFT_DOWN),
@@ -176,18 +164,10 @@ public class EditorViewController {
                             }
                         }
                     );
-                }
-            });
-        }
-
-        if (loadDomainModelButton != null) {
-            loadDomainModelButton.setOnAction(e -> {
-                FileChooser fileChooser = new FileChooser();
-                fileChooser.setTitle("Load Domain Model (.puml)");
-                fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PlantUML Files", "*.puml", "*.txt"));
-                File selectedFile = fileChooser.showOpenDialog(loadDomainModelButton.getScene().getWindow());
-                if (selectedFile != null) {
-                    this.viewModel.loadDomainModel(selectedFile);
+                    // Tooltip-CSS mit der Scene synchron halten
+                    syncTooltipStylesheets(newScene);
+                    newScene.getStylesheets().addListener((javafx.collections.ListChangeListener<String>) _ ->
+                        syncTooltipStylesheets(newScene));
                 }
             });
         }
@@ -212,22 +192,21 @@ public class EditorViewController {
                 modelComboBox.setItems(this.viewModel.getAvailableOllamaModels());
                 this.viewModel.selectedOllamaModelProperty().bind(modelComboBox.getSelectionModel().selectedItemProperty());
 
-                // Pre-select an item if available once the list is populated
-                this.viewModel.getAvailableOllamaModels().addListener((javafx.collections.ListChangeListener<String>) c -> {
+                this.viewModel.getAvailableOllamaModels().addListener((javafx.collections.ListChangeListener<String>) _ -> {
                     if (!this.viewModel.getAvailableOllamaModels().isEmpty() && modelComboBox.getSelectionModel().isEmpty()) {
                         javafx.application.Platform.runLater(() -> modelComboBox.getSelectionModel().selectFirst());
                     }
                 });
             }
 
-            generateButton.setOnAction(e -> {
+            generateButton.setOnAction(_ -> {
                 String prompt = promptTextArea.getText();
                 if (prompt != null && !prompt.isBlank()) {
                     this.viewModel.generateRuleFromText(prompt);
                 }
             });
 
-            selectTemplateButton.setOnAction(e -> {
+            selectTemplateButton.setOnAction(_ -> {
                 FileChooser fileChooser = new FileChooser();
                 fileChooser.setTitle("Select Template Rule File");
                 File selectedFile = fileChooser.showOpenDialog(selectTemplateButton.getScene().getWindow());
@@ -237,37 +216,24 @@ public class EditorViewController {
             });
         }
 
-        if (domainModelProgress != null) {
-            domainModelProgress.visibleProperty().bind(this.viewModel.isParsingDomainModelProperty());
-            domainModelProgress.managedProperty().bind(this.viewModel.isParsingDomainModelProperty());
-        }
-
         if (editorCodeArea != null) {
-            // Unbind previous listeners if necessary (simplified for demo)
-
-            // Update view model when CodeArea text changes
-            editorCodeArea.getModel().addListener(change -> {
+            editorCodeArea.getModel().addListener(_ -> {
                 if (!this.viewModel.isUpdating()) {
                     this.viewModel.setTextContent(editorCodeArea.getText());
                 }
             });
 
-            // Set initial text
             editorCodeArea.setText(this.viewModel.getTextContent());
 
-            // Listen to view model changes
-            this.viewModel.textContentProperty().addListener((obs, oldVal, newVal) -> {
+            this.viewModel.textContentProperty().addListener((_, _, newVal) -> {
                 if (!newVal.equals(editorCodeArea.getText())) {
                     editorCodeArea.setText(newVal);
                 }
             });
 
-            // Listen to replace text command for formatting
-            this.viewModel.replaceTextCommandProperty().addListener((obs, oldVal, newVal) -> {
+            this.viewModel.replaceTextCommandProperty().addListener((_, _, newVal) -> {
                 if (newVal != null) {
                     try {
-                        // replaceText applies a single action to the undo stack
-                        // Using 'false' for 'preserveStyle' parameter
                         int lastParagraph = editorCodeArea.getModel().size() - 1;
                         editorCodeArea.replaceText(TextPos.ofLeading(0, 0), TextPos.ofLeading(lastParagraph, editorCodeArea.getModel().getPlainText(lastParagraph).length()), newVal.text(), false);
                     } finally {
@@ -278,8 +244,7 @@ public class EditorViewController {
                 }
             });
 
-            // Listen to insert text command
-            this.viewModel.insertTextCommandProperty().addListener((obs, oldVal, newVal) -> {
+            this.viewModel.insertTextCommandProperty().addListener((_, _, newVal) -> {
                 if (newVal != null) {
                     try {
                         TextPos currentPos = editorCodeArea.getCaretPosition();
@@ -291,15 +256,11 @@ public class EditorViewController {
 
                         editorCodeArea.insertText(currentPos, newVal.text(), null);
 
-                        // Move caret to end of inserted text.
-                        // TextPos.ofLeading(paragraphIndex, offsetInParagraph) – both values must be
-                        // in paragraph-space, NOT an absolute character offset.
                         int newCharOffset = currentPos.offset() + newVal.text().length();
                         TextPos afterInsert = TextPos.ofLeading(currentPos.index(), newCharOffset);
                         editorCodeArea.select(afterInsert, afterInsert);
                         editorCodeArea.requestFocus();
                     } finally {
-                        // Clear the command in ViewModel to allow repeated commands
                         this.viewModel.clearInsertTextCommand();
                         this.viewModel.setUpdating(false);
                         this.viewModel.setTextContent(editorCodeArea.getText());
@@ -307,30 +268,23 @@ public class EditorViewController {
                 }
             });
 
-            // Listen to error changes
-            this.viewModel.getErrors().addListener((ListChangeListener<SyntaxError>) c -> {
-                // Trigger a full redraw to apply syntax decorations
+            this.viewModel.getErrors().addListener((ListChangeListener<SyntaxError>) _ -> {
                 editorCodeArea.setSyntaxDecorator(null);
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
             });
 
-            // Listen to token changes for highlighting
-            this.viewModel.getTokens().addListener((ListChangeListener<Token>) c -> {
+            this.viewModel.getTokens().addListener((ListChangeListener<Token>) _ -> {
                 editorCodeArea.setSyntaxDecorator(null);
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
             });
 
             editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
 
-            // Initial font size
             updateEditorStyle(this.viewModel.getFontSize());
 
-            // Listen to font size changes
-            this.viewModel.fontSizeProperty().addListener((obs, oldVal, newVal) -> {
-                updateEditorStyle(newVal.intValue());
-            });
+            this.viewModel.fontSizeProperty().addListener((_, _, newVal) ->
+                updateEditorStyle(newVal.intValue()));
 
-            // Zoom with Ctrl+Scroll
             editorCodeArea.setOnScroll(event -> {
                 if (event.isControlDown()) {
                     int currentSize = viewModel.getFontSize();
@@ -343,24 +297,19 @@ public class EditorViewController {
                 }
             });
 
-            // Listen to caret position – compute absolute char offset across all paragraphs
-            editorCodeArea.caretPositionProperty().addListener((obs, oldVal, newVal) -> {
+            editorCodeArea.caretPositionProperty().addListener((_, _, newVal) -> {
                 if (newVal != null) {
                     int absoluteOffset = computeAbsoluteOffset(newVal);
                     viewModel.onCaretPositionChanged(absoluteOffset);
                 }
             });
 
-            // Listen to token suggestions
-            this.viewModel.getSuggestedTokens().addListener((ListChangeListener<String>) c -> {
+            this.viewModel.getSuggestedTokens().addListener((ListChangeListener<String>) _ -> {
                 suggestionsPane.getChildren().clear();
                 for (String token : this.viewModel.getSuggestedTokens()) {
                     Button btn = new Button(token);
                     btn.getStyleClass().addAll("pill-button");
-                    // On click, append text via the view model mediator
-                    btn.setOnAction(e -> {
-                        viewModel.insertBaustein(token);
-                    });
+                    btn.setOnAction(_ -> viewModel.insertBaustein(token));
                     suggestionsPane.getChildren().add(btn);
                 }
             });
@@ -460,6 +409,28 @@ public class EditorViewController {
 
     private void updateEditorStyle(int size) {
         editorCodeArea.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: " + size + "pt;");
+    }
+
+    /**
+     * Synchronisiert die Stylesheets des Tooltip-Popups mit denen der Scene,
+     * damit theme-aware CSS-Variablen auch im Popup-Window wirken.
+     * Tooltip extends PopupControl – dessen Scene wird beim ersten Show() erstellt;
+     * wir setzen die Stylesheets daher auf dem Tooltip selbst über setStyle-Klassen
+     * und reichen die User-Agent-Stylesheets über den ownerNode weiter.
+     * Der zuverlässigste Weg: direkt die Skin-Scene beschreiben sobald sie existiert.
+     */
+    private void syncTooltipStylesheets(javafx.scene.Scene scene) {
+        // Tooltip.getScene() ist erst nach dem ersten show() verfügbar.
+        // Wir merken uns die Stylesheets und setzen sie beim nächsten showingProperty-Wechsel.
+        errorTooltip.showingProperty().addListener((_, _, showing) -> {
+            if (showing && errorTooltip.getScene() != null) {
+                errorTooltip.getScene().getStylesheets().setAll(scene.getStylesheets());
+            }
+        });
+        // Falls der Tooltip bereits sichtbar war und die Scene sich ändert (Theme-Toggle):
+        if (errorTooltip.getScene() != null) {
+            errorTooltip.getScene().getStylesheets().setAll(scene.getStylesheets());
+        }
     }
 
     /**

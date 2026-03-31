@@ -8,46 +8,79 @@
     -fx-border-width: 1px;
 }
 
-/* Custom CodeArea styling for better readability */
+/* ── Editor: Theme-responsive CSS-Variablen ─────────────────────────── */
+.root {
+    /* Dark-Mode Defaults (PrimerDark) */
+    -geantlr-editor-bg:          #2b2b2b;
+    -geantlr-editor-fg:          #a9b7c6;
+    -geantlr-syntax-keyword:     #cc7832;
+    -geantlr-syntax-string:      #6a8759;
+    -geantlr-syntax-number:      #6897bb;
+    -geantlr-syntax-comment:     #808080;
+    -geantlr-syntax-annotation:  #bbb529;
+    -geantlr-syntax-operator:    #a9b7c6;
+    -geantlr-tooltip-bg:         #3c3f41;
+    -geantlr-tooltip-fg:         #bbbbbb;
+    -geantlr-tooltip-border:     #646464;
+}
+
+/* Light-Mode Overrides – greifen wenn AtlantaFX PrimerLight aktiv ist
+   (PrimerLight setzt -color-bg-default auf helle Werte; wir erkennen das
+    zuverlässig über die -fx-background-color des roots, aber einfacher:
+    wir definieren die Overrides in einem separaten Stylesheet das der
+    toggleTheme()-Handler lädt – siehe theme-light.css) */
+
+/* Custom CodeArea styling */
 .editor-code-area {
     -fx-font-family: "Consolas", "Courier New", monospace;
-    -fx-background-color: #2b2b2b;
+    -fx-background-color: -geantlr-editor-bg;
 }
 
 /* Color the main editor text */
 .editor-code-area .content .text {
-    -fx-fill: #a9b7c6;
+    -fx-fill: -geantlr-editor-fg;
 }
 
 /* Syntax Highlighting */
 .editor-code-area .keyword {
-    -fx-fill: #cc7832;
+    -fx-fill: -geantlr-syntax-keyword;
     -fx-font-weight: bold;
 }
 
 .editor-code-area .string {
-    -fx-fill: #6a8759;
+    -fx-fill: -geantlr-syntax-string;
 }
 
 .editor-code-area .number {
-    -fx-fill: #6897bb;
+    -fx-fill: -geantlr-syntax-number;
 }
 
 .editor-code-area .comment {
-    -fx-fill: #808080;
+    -fx-fill: -geantlr-syntax-comment;
     -fx-font-style: italic;
 }
 
 .editor-code-area .annotation {
-    -fx-fill: #bbb529;
+    -fx-fill: -geantlr-syntax-annotation;
 }
 
 .editor-code-area .identifier {
-    -fx-fill: #a9b7c6;
+    -fx-fill: -geantlr-editor-fg;
 }
 
 .editor-code-area .operator {
-    -fx-fill: #a9b7c6;
+    -fx-fill: -geantlr-syntax-operator;
+}
+
+/* Error Tooltip – theme-aware via CSS-Variablen */
+.error-tooltip {
+    -fx-background-color: -geantlr-tooltip-bg;
+    -fx-text-fill:        -geantlr-tooltip-fg;
+    -fx-border-color:     -geantlr-tooltip-border;
+    -fx-border-width:     1px;
+    -fx-padding:          8px;
+    -fx-font-size:        11pt;
+    -fx-max-width:        500px;
 }
 
 /* Style the line numbers in the primary accent color - Force with !important */
@@ -105,6 +138,17 @@
 
 .close-btn:hover > .ikonli-font-icon {
     -fx-fill: white;
+}
+
+/* Epic 2: Permanent Accent Borders and Rounded Corners */
+.main-view .button, .accent-view .button,
+.main-view .text-field, .accent-view .text-field,
+.main-view .text-area, .accent-view .text-area,
+.main-view .menu-button, .accent-view .menu-button,
+.main-view .combo-box, .accent-view .combo-box {
+    -fx-border-color: -color-accent-emphasis;
+    -fx-border-radius: 10px;
+    -fx-background-radius: 10px;
 }
 
 /* Epic 1: Pill Button Styling */
