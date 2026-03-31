@@ -2,7 +2,10 @@
 
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.layout.BorderPane?>
@@ -43,28 +46,28 @@
                 <!-- Spacer -->
                 <HBox HBox.hgrow="ALWAYS" />
 
-                <javafx.scene.control.MenuButton styleClass="button-outlined, button-icon, no-arrow">
+                <MenuButton styleClass="button-outlined, button-icon, no-arrow">
                     <graphic>
                         <FontIcon iconLiteral="mdi2d-dots-horizontal" iconSize="20"/>
                     </graphic>
                     <items>
-                        <javafx.scene.control.MenuItem text="Toggle Theme" onAction="#toggleTheme">
+                        <MenuItem text="Toggle Theme" onAction="#toggleTheme">
                             <graphic>
                                 <FontIcon fx:id="themeIcon" iconLiteral="mdi2w-white-balance-sunny" iconSize="20"/>
                             </graphic>
-                        </javafx.scene.control.MenuItem>
-                        <javafx.scene.control.MenuItem text="Toggle Editors" onAction="#toggleEditors">
+                        </MenuItem>
+                        <MenuItem text="Toggle Editors" onAction="#toggleEditors">
                             <graphic>
                                 <FontIcon iconLiteral="mdi2p-page-layout-body" iconSize="20"/>
                             </graphic>
-                        </javafx.scene.control.MenuItem>
-                        <javafx.scene.control.MenuItem text="Experimental Mode" onAction="#toggleExperimentalMode">
+                        </MenuItem>
+                        <MenuItem text="Experimental Mode" onAction="#toggleExperimentalMode">
                             <graphic>
                                 <FontIcon iconLiteral="mdi2f-flask-outline" iconSize="20"/>
                             </graphic>
-                        </javafx.scene.control.MenuItem>
+                        </MenuItem>
                     </items>
-                </javafx.scene.control.MenuButton>
+                </MenuButton>
             </ToolBar>
             <ProgressBar fx:id="mainProgressBar" maxWidth="Infinity" progress="-1" visible="false" managed="false"/>
         </VBox>
