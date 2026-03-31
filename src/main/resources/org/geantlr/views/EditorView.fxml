@@ -58,6 +58,7 @@
                         <FontIcon iconLiteral="mdi2f-file-tree" iconSize="16"/>
                     </graphic>
                 </Button>
+                <ProgressIndicator fx:id="domainModelProgress" visible="false" managed="false" prefWidth="20" prefHeight="20"/>
             </HBox>
         </VBox>
     </bottom>
