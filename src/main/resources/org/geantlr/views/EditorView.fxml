@@ -27,11 +27,11 @@
                         <FontIcon iconLiteral="mdi2p-paperclip" iconSize="16"/>
                     </graphic>
                 </Button>
+                <javafx.scene.control.ComboBox fx:id="modelComboBox" promptText="Select Model..."/>
                 <Label fx:id="templateNameLabel" styleClass="tag" visible="false" managed="false"/>
             </HBox>
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <TextArea fx:id="promptTextArea" promptText="Enter natural language prompt..." HBox.hgrow="ALWAYS" wrapText="true" prefRowCount="2"/>
-                <javafx.scene.control.ComboBox fx:id="modelComboBox" promptText="Select Model..."/>
                 <Button fx:id="generateButton" text="Generieren" styleClass="accent"/>
                 <ProgressIndicator fx:id="generationProgress" visible="false" prefWidth="20" prefHeight="20"/>
             </HBox>
