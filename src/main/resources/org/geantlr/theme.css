@@ -151,6 +151,10 @@
     -fx-background-radius: 10px;
 }
 
+.main-view .menu-button.flat {
+    -fx-border-color: transparent;
+}
+
 /* Epic 1: Pill Button Styling */
 .pill-button {
     -fx-background-radius: 15px;
