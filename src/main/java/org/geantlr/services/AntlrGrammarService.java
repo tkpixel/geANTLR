@@ -8,12 +8,16 @@ import org.antlr.v4.runtime.LexerInterpreter;
 import org.antlr.v4.runtime.ParserInterpreter;
 
 import org.antlr.v4.runtime.Token;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
 
 @Singleton
 public class AntlrGrammarService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(AntlrGrammarService.class);
 
     public ParseResult parseText(DynamicGrammar dynamicGrammar, String text) {
         if (dynamicGrammar == null || text == null || text.isEmpty()) {
@@ -43,6 +47,7 @@ public class AntlrGrammarService {
                 parserInterpreter.parse(startRule.index);
             } catch (Exception e) {
                 // Ignore general exceptions during compilation/parsing as errors are handled by listener
+                LOG.trace("Parsing exception ignored as it is handled by error listener", e);
             }
         } else {
             // If it's a lexer grammar only, consume all tokens to trigger lexer errors

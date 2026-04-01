@@ -25,6 +25,7 @@ module org.geantlr {
     requires java.logging;
     requires io.micronaut.inject;
     requires net.sourceforge.plantuml;
+    requires org.slf4j;
 
     opens org.geantlr to javafx.fxml;
     opens org.geantlr.views to javafx.fxml;

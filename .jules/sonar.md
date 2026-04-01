@@ -1,3 +1,5 @@
-## 2026-03-26 - PMD False Positives on FXML
-**Learning:** PMD's `UnusedPrivateMethod` and `UnusedPrivateField` rules flag `@FXML` annotated methods and fields (e.g., in `MainViewController`) as unused because they are injected/invoked reflectively by JavaFX `FXMLLoader` and not called directly in Java code.
-**Action:** Ignore these specific PMD warnings for `@FXML` annotated members. Do not delete or change `@FXML` members just because PMD flags them as unused.
+## 2026-04-01 - Fix EmptyCatchBlock Code Smells by Replacing with Trace Logs
+
+**Learning:** When addressing `EmptyCatchBlock` warnings flagged by PMD (such as ignoring expected parsing exceptions), leaving the block completely empty or solely containing a comment fails the linter. Suppressing the warning (`@SuppressWarnings("PMD.EmptyCatchBlock")`) violates Sonar's Clean Code principles. Instead, an optimal solution is to introduce SLF4J logging at the `TRACE` or `DEBUG` level to explicitly handle the exception without cluttering standard production logs.
+
+**Action:** Whenever implementing a `try-catch` where the exception is genuinely expected and should be ignored (e.g., relying on a secondary mechanism like an `ErrorListener` to handle the failure context), inject `org.slf4j.Logger` and log the exception inside the `catch` block (e.g., `LOG.trace("Parsing exception ignored, handled by listener", e);`). This fully satisfies the `EmptyCatchBlock` linter rules, adheres to good maintainability practices by keeping a debuggable trace, and avoids code smell suppression. Ensure the required module `org.slf4j` is added to `module-info.java` if previously missing.
