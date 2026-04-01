@@ -43,28 +43,41 @@
         <StackPane>
             <CodeArea fx:id="editorCodeArea" wrapText="true" styleClass="editor-code-area"/>
             <HBox fx:id="searchBar" spacing="5" visible="false" managed="false" alignment="CENTER_LEFT"
-                  style="-fx-background-color: -color-bg-default; -fx-border-color: -color-border-default; -fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 2);"
+                  style="-fx-background-color: -color-bg-default; -fx-border-color: -color-border-default; -fx-border-width: 1; -fx-border-radius: 15; -fx-background-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 2);"
                   StackPane.alignment="TOP_RIGHT" maxHeight="-Infinity" maxWidth="-Infinity">
                 <StackPane.margin>
                     <Insets top="10" right="25"/>
                 </StackPane.margin>
                 <padding>
-                    <Insets top="5" right="5" bottom="5" left="5"/>
+                    <Insets top="5" right="10" bottom="5" left="10"/>
                 </padding>
 
-                <javafx.scene.control.TextField fx:id="searchTextField" promptText="Search..." prefWidth="200" styleClass="search-field"/>
+                <javafx.scene.control.TextField fx:id="searchTextField" promptText="Search..." prefWidth="200" styleClass="search-field, rounded"/>
 
-                <javafx.scene.control.ToggleButton fx:id="searchMatchCaseToggle" text="Aa" styleClass="button-icon, no-arrow" accessibleText="Match Case">
+                <javafx.scene.control.ToggleButton fx:id="searchMatchCaseToggle" styleClass="button-icon, no-arrow" accessibleText="Match Case">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2f-format-letter-case" iconSize="16"/>
+                    </graphic>
                     <tooltip><javafx.scene.control.Tooltip text="Match Case"/></tooltip>
                 </javafx.scene.control.ToggleButton>
-                <javafx.scene.control.ToggleButton fx:id="searchWholeWordToggle" text="\\b" styleClass="button-icon, no-arrow" accessibleText="Whole Word">
+                <javafx.scene.control.ToggleButton fx:id="searchWholeWordToggle" styleClass="button-icon, no-arrow" accessibleText="Whole Word">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2f-format-text-variant" iconSize="16"/>
+                    </graphic>
                     <tooltip><javafx.scene.control.Tooltip text="Whole Word"/></tooltip>
                 </javafx.scene.control.ToggleButton>
-                <javafx.scene.control.ToggleButton fx:id="searchRegexToggle" text=".*" styleClass="button-icon, no-arrow" accessibleText="Regular Expression">
+                <javafx.scene.control.ToggleButton fx:id="searchRegexToggle" styleClass="button-icon, no-arrow" accessibleText="Regular Expression">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2r-regex" iconSize="16"/>
+                    </graphic>
                     <tooltip><javafx.scene.control.Tooltip text="Regular Expression"/></tooltip>
                 </javafx.scene.control.ToggleButton>
 
-                <Label fx:id="searchCountLabel" text="No results" style="-fx-text-fill: -color-fg-muted;"/>
+                <Label fx:id="searchCountLabel" text="No results" style="-fx-text-fill: -color-fg-muted;">
+                    <padding>
+                        <Insets left="5" right="5"/>
+                    </padding>
+                </Label>
 
                 <Button fx:id="searchPrevButton" styleClass="button-icon" accessibleText="Previous Match">
                     <graphic>
