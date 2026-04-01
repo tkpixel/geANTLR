@@ -63,6 +63,33 @@ public class EditorViewController {
     @FXML
     private javafx.scene.control.ComboBox<String> modelComboBox;
 
+    @FXML
+    private javafx.scene.layout.HBox searchBar;
+
+    @FXML
+    private javafx.scene.control.TextField searchTextField;
+
+    @FXML
+    private javafx.scene.control.ToggleButton searchMatchCaseToggle;
+
+    @FXML
+    private javafx.scene.control.ToggleButton searchWholeWordToggle;
+
+    @FXML
+    private javafx.scene.control.ToggleButton searchRegexToggle;
+
+    @FXML
+    private Label searchCountLabel;
+
+    @FXML
+    private Button searchPrevButton;
+
+    @FXML
+    private Button searchNextButton;
+
+    @FXML
+    private Button searchCloseButton;
+
     private final javafx.scene.control.Tooltip errorTooltip = new javafx.scene.control.Tooltip();
     private final PauseTransition hoverPause = new PauseTransition(Duration.millis(300));
     private SyntaxError lastHoveredError = null;
@@ -164,12 +191,70 @@ public class EditorViewController {
                             }
                         }
                     );
+                    newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.F, KeyCombination.SHORTCUT_DOWN),
+                        () -> {
+                            if (searchBar != null && searchTextField != null) {
+                                searchBar.setVisible(true);
+                                searchBar.setManaged(true);
+                                searchTextField.requestFocus();
+                                searchTextField.selectAll();
+                            }
+                        }
+                    );
                     // Tooltip-CSS mit der Scene synchron halten
                     syncTooltipStylesheets(newScene);
                     newScene.getStylesheets().addListener((javafx.collections.ListChangeListener<String>) _ ->
                         syncTooltipStylesheets(newScene));
                 }
             });
+        }
+
+        if (searchCloseButton != null) {
+            searchCloseButton.setOnAction(_ -> {
+                closeSearch();
+            });
+        }
+
+        if (searchTextField != null) {
+            searchTextField.setOnKeyPressed(event -> {
+                if (event.getCode() == KeyCode.ESCAPE) {
+                    closeSearch();
+                    event.consume();
+                } else if (event.getCode() == KeyCode.ENTER) {
+                    if (event.isShiftDown()) {
+                        if (viewModel != null) viewModel.searchPrevious();
+                    } else {
+                        if (viewModel != null) viewModel.searchNext();
+                    }
+                    event.consume();
+                }
+            });
+        }
+
+        if (searchPrevButton != null) {
+            searchPrevButton.setOnAction(_ -> {
+                if (viewModel != null) viewModel.searchPrevious();
+            });
+        }
+
+        if (searchNextButton != null) {
+            searchNextButton.setOnAction(_ -> {
+                if (viewModel != null) viewModel.searchNext();
+            });
+        }
+    }
+
+    private void closeSearch() {
+        if (searchBar != null) {
+            searchBar.setVisible(false);
+            searchBar.setManaged(false);
+        }
+        if (viewModel != null) {
+            viewModel.setSearchText("");
+        }
+        if (editorCodeArea != null) {
+            editorCodeArea.requestFocus();
         }
     }
 
@@ -196,6 +281,28 @@ public class EditorViewController {
                     if (!this.viewModel.getAvailableOllamaModels().isEmpty() && modelComboBox.getSelectionModel().isEmpty()) {
                         javafx.application.Platform.runLater(() -> modelComboBox.getSelectionModel().selectFirst());
                     }
+                });
+            }
+
+            if (searchTextField != null) {
+                viewModel.searchTextProperty().bindBidirectional(searchTextField.textProperty());
+            }
+
+            if (searchMatchCaseToggle != null) {
+                viewModel.searchMatchCaseProperty().bindBidirectional(searchMatchCaseToggle.selectedProperty());
+            }
+
+            if (searchWholeWordToggle != null) {
+                viewModel.searchWholeWordProperty().bindBidirectional(searchWholeWordToggle.selectedProperty());
+            }
+
+            if (searchRegexToggle != null) {
+                viewModel.searchRegexProperty().bindBidirectional(searchRegexToggle.selectedProperty());
+            }
+
+            if (searchCountLabel != null) {
+                viewModel.searchCountTextProperty().addListener((_, _, newVal) -> {
+                    searchCountLabel.setText(newVal != null ? newVal : "No results");
                 });
             }
 
@@ -276,6 +383,26 @@ public class EditorViewController {
             this.viewModel.getTokens().addListener((ListChangeListener<Token>) _ -> {
                 editorCodeArea.setSyntaxDecorator(null);
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
+            });
+
+            this.viewModel.getSearchMatches().addListener((ListChangeListener<EditorViewModel.SearchMatch>) _ -> {
+                editorCodeArea.setSyntaxDecorator(null);
+                editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
+            });
+
+            this.viewModel.currentMatchIndexProperty().addListener((_, _, newVal) -> {
+                editorCodeArea.setSyntaxDecorator(null);
+                editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
+
+                if (newVal != null && newVal.intValue() >= 0 && newVal.intValue() < viewModel.getSearchMatches().size()) {
+                    EditorViewModel.SearchMatch match = viewModel.getSearchMatches().get(newVal.intValue());
+                    TextPos startPos = computeTextPosFromOffset(match.start());
+                    TextPos endPos = computeTextPosFromOffset(match.end());
+                    if (startPos != null && endPos != null) {
+                        editorCodeArea.select(startPos, endPos);
+                        editorCodeArea.showParagraphInViewport(startPos.index());
+                    }
+                }
             });
 
             editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
@@ -373,6 +500,31 @@ public class EditorViewController {
                         builder.addSegment(text);
                     }
 
+                    if (viewModel.getSearchMatches() != null && !viewModel.getSearchMatches().isEmpty()) {
+                        int paraStartOffset = computeAbsoluteOffset(TextPos.ofLeading(paragraphIndex, 0));
+                        int paraEndOffset = paraStartOffset + text.length();
+                        int currentActiveMatch = viewModel.currentMatchIndexProperty().get();
+
+                        for (int i = 0; i < viewModel.getSearchMatches().size(); i++) {
+                            EditorViewModel.SearchMatch match = viewModel.getSearchMatches().get(i);
+                            // Check if the match intersects with the current paragraph
+                            if (match.start() < paraEndOffset && match.end() > paraStartOffset) {
+                                int matchStartInLine = Math.max(0, match.start() - paraStartOffset);
+                                int matchEndInLine = Math.min(text.length(), match.end() - paraStartOffset);
+
+                                if (matchStartInLine < matchEndInLine) {
+                                    if (i == currentActiveMatch) {
+                                        // Active match: slightly darker pink or different style
+                                        builder.addHighlight(matchStartInLine, matchEndInLine - matchStartInLine, Color.HOTPINK);
+                                    } else {
+                                        // Inactive match: light pink
+                                        builder.addHighlight(matchStartInLine, matchEndInLine - matchStartInLine, Color.LIGHTPINK);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Check for errors on this line
                     for (SyntaxError error : viewModel.getErrors()) {
                         if (error.line() == antlrLine) {
@@ -437,6 +589,25 @@ public class EditorViewController {
      * Converts a TextPos (paragraph + intra-paragraph offset) to an absolute
      * character offset in the full text, counting each paragraph separator as one '\n'.
      */
+    /**
+     * Converts an absolute character offset to a TextPos (paragraph + intra-paragraph offset).
+     */
+    private TextPos computeTextPosFromOffset(int offset) {
+        if (editorCodeArea == null || editorCodeArea.getModel() == null) return null;
+        int currentOffset = 0;
+        for (int i = 0; i < editorCodeArea.getModel().size(); i++) {
+            int len = editorCodeArea.getModel().getPlainText(i).length();
+            if (offset <= currentOffset + len) {
+                return TextPos.ofLeading(i, offset - currentOffset);
+            }
+            currentOffset += len + 1; // +1 for newline separator
+        }
+        // If offset is past the end, return the very end position
+        int lastIdx = editorCodeArea.getModel().size() - 1;
+        if (lastIdx < 0) return null;
+        return TextPos.ofLeading(lastIdx, editorCodeArea.getModel().getPlainText(lastIdx).length());
+    }
+
     private int computeAbsoluteOffset(TextPos pos) {
         if (pos == null) return 0;
         int absolute = 0;

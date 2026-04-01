@@ -48,6 +48,17 @@ public class EditorViewModel {
     private final StringProperty referenceTemplate = new SimpleStringProperty("");
     private final StringProperty referenceTemplateName = new SimpleStringProperty("");
 
+    private final StringProperty searchText = new SimpleStringProperty("");
+    private final BooleanProperty searchMatchCase = new SimpleBooleanProperty(false);
+    private final BooleanProperty searchWholeWord = new SimpleBooleanProperty(false);
+    private final BooleanProperty searchRegex = new SimpleBooleanProperty(false);
+    private final StringProperty searchCountText = new SimpleStringProperty("No results");
+    private final IntegerProperty currentMatchIndex = new SimpleIntegerProperty(-1);
+
+    public record SearchMatch(int start, int end) {}
+    private final ObservableList<SearchMatch> searchMatches = FXCollections.observableArrayList();
+    private final PauseTransition searchDebounce = new PauseTransition(Duration.millis(150));
+
     private final ObservableList<String> availableOllamaModels = FXCollections.observableArrayList();
     private final ObjectProperty<String> selectedOllamaModel = new SimpleObjectProperty<>();
 
@@ -83,10 +94,100 @@ public class EditorViewModel {
 
         textContent.addListener((obs, oldVal, newVal) -> {
             debounce.playFromStart();
+            searchDebounce.playFromStart();
         });
+
+        searchDebounce.setOnFinished(event -> executeSearch());
+
+        searchText.addListener((obs, oldVal, newVal) -> searchDebounce.playFromStart());
+        searchMatchCase.addListener((obs, oldVal, newVal) -> searchDebounce.playFromStart());
+        searchWholeWord.addListener((obs, oldVal, newVal) -> searchDebounce.playFromStart());
+        searchRegex.addListener((obs, oldVal, newVal) -> searchDebounce.playFromStart());
 
         loadAvailableOllamaModels();
     }
+
+    private void executeSearch() {
+        String query = searchText.get();
+        String text = textContent.get();
+
+        searchMatches.clear();
+        currentMatchIndex.set(-1);
+
+        if (query == null || query.isEmpty() || text == null || text.isEmpty()) {
+            updateSearchCount();
+            return;
+        }
+
+        try {
+            String patternString = query;
+            if (!searchRegex.get()) {
+                patternString = java.util.regex.Pattern.quote(query);
+            }
+            if (searchWholeWord.get()) {
+                patternString = "\\b" + patternString + "\\b";
+            }
+
+            int flags = 0;
+            if (!searchMatchCase.get()) {
+                flags |= java.util.regex.Pattern.CASE_INSENSITIVE;
+            }
+
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(patternString, flags);
+            java.util.regex.Matcher matcher = pattern.matcher(text);
+
+            java.util.List<SearchMatch> matches = new java.util.ArrayList<>();
+            while (matcher.find()) {
+                matches.add(new SearchMatch(matcher.start(), matcher.end()));
+            }
+            searchMatches.setAll(matches);
+
+            if (!searchMatches.isEmpty()) {
+                currentMatchIndex.set(0);
+            }
+            updateSearchCount();
+        } catch (java.util.regex.PatternSyntaxException e) {
+            searchCountText.set("Invalid Regex");
+        }
+    }
+
+    private void updateSearchCount() {
+        if (searchMatches.isEmpty()) {
+            searchCountText.set("No results");
+        } else {
+            searchCountText.set((currentMatchIndex.get() + 1) + " of " + searchMatches.size());
+        }
+    }
+
+    public void searchNext() {
+        if (searchMatches.isEmpty()) return;
+        int nextIndex = (currentMatchIndex.get() + 1) % searchMatches.size();
+        currentMatchIndex.set(nextIndex);
+        updateSearchCount();
+    }
+
+    public void searchPrevious() {
+        if (searchMatches.isEmpty()) return;
+        int prevIndex = currentMatchIndex.get() - 1;
+        if (prevIndex < 0) {
+            prevIndex = searchMatches.size() - 1;
+        }
+        currentMatchIndex.set(prevIndex);
+        updateSearchCount();
+    }
+
+    public StringProperty searchTextProperty() { return searchText; }
+    public String getSearchText() { return searchText.get(); }
+    public void setSearchText(String text) { this.searchText.set(text); }
+
+    public BooleanProperty searchMatchCaseProperty() { return searchMatchCase; }
+    public BooleanProperty searchWholeWordProperty() { return searchWholeWord; }
+    public BooleanProperty searchRegexProperty() { return searchRegex; }
+
+    public StringProperty searchCountTextProperty() { return searchCountText; }
+
+    public ObservableList<SearchMatch> getSearchMatches() { return searchMatches; }
+    public IntegerProperty currentMatchIndexProperty() { return currentMatchIndex; }
 
     private void loadAvailableOllamaModels() {
         CompletableFuture.runAsync(() -> {

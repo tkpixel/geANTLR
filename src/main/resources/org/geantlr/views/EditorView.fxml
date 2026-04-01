@@ -39,7 +39,52 @@
     </top>
 
     <center>
-        <CodeArea fx:id="editorCodeArea" wrapText="true" styleClass="editor-code-area"/>
+        <javafx.scene.layout.StackPane>
+            <CodeArea fx:id="editorCodeArea" wrapText="true" styleClass="editor-code-area"/>
+            <HBox fx:id="searchBar" spacing="5" visible="false" managed="false" alignment="CENTER_LEFT"
+                  style="-fx-background-color: -color-bg-default; -fx-border-color: -color-border-default; -fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 2);"
+                  StackPane.alignment="TOP_RIGHT" maxHeight="-Infinity" maxWidth="-Infinity">
+                <StackPane.margin>
+                    <Insets top="10" right="25"/>
+                </StackPane.margin>
+                <padding>
+                    <Insets top="5" right="5" bottom="5" left="5"/>
+                </padding>
+
+                <javafx.scene.control.TextField fx:id="searchTextField" promptText="Search..." prefWidth="200" styleClass="search-field"/>
+
+                <javafx.scene.control.ToggleButton fx:id="searchMatchCaseToggle" text="Aa" styleClass="button-icon, no-arrow" accessibleText="Match Case">
+                    <tooltip><javafx.scene.control.Tooltip text="Match Case"/></tooltip>
+                </javafx.scene.control.ToggleButton>
+                <javafx.scene.control.ToggleButton fx:id="searchWholeWordToggle" text="\\b" styleClass="button-icon, no-arrow" accessibleText="Whole Word">
+                    <tooltip><javafx.scene.control.Tooltip text="Whole Word"/></tooltip>
+                </javafx.scene.control.ToggleButton>
+                <javafx.scene.control.ToggleButton fx:id="searchRegexToggle" text=".*" styleClass="button-icon, no-arrow" accessibleText="Regular Expression">
+                    <tooltip><javafx.scene.control.Tooltip text="Regular Expression"/></tooltip>
+                </javafx.scene.control.ToggleButton>
+
+                <Label fx:id="searchCountLabel" text="No results" style="-fx-text-fill: -color-fg-muted;"/>
+
+                <Button fx:id="searchPrevButton" styleClass="button-icon" accessibleText="Previous Match">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2a-arrow-up" iconSize="16"/>
+                    </graphic>
+                    <tooltip><javafx.scene.control.Tooltip text="Previous Match (Shift+Enter)"/></tooltip>
+                </Button>
+                <Button fx:id="searchNextButton" styleClass="button-icon" accessibleText="Next Match">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2a-arrow-down" iconSize="16"/>
+                    </graphic>
+                    <tooltip><javafx.scene.control.Tooltip text="Next Match (Enter)"/></tooltip>
+                </Button>
+                <Button fx:id="searchCloseButton" styleClass="button-icon" accessibleText="Close Search">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2c-close" iconSize="16"/>
+                    </graphic>
+                    <tooltip><javafx.scene.control.Tooltip text="Close (Esc)"/></tooltip>
+                </Button>
+            </HBox>
+        </javafx.scene.layout.StackPane>
     </center>
 
     <bottom>
