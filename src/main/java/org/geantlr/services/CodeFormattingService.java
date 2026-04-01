@@ -14,9 +14,13 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Singleton
 public class CodeFormattingService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(CodeFormattingService.class);
 
     public String formatCode(DynamicGrammar grammar, String code) {
         if (grammar == null || grammar.getParserGrammar() == null || code == null || code.isEmpty()) {
@@ -84,7 +88,9 @@ public class CodeFormattingService {
                         // Avoid deleting tokens if they were already rewritten/deleted to avoid IllegalStateException
                         try {
                             rewriter.delete(hidden);
-                        } catch (Exception e) {}
+                        } catch (IllegalStateException e) {
+                            LOG.trace("Token already deleted or invalid for deletion", e);
+                        }
                     }
                 }
             }

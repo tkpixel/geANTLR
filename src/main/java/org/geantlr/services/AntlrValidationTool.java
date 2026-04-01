@@ -15,12 +15,16 @@ import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.Vocabulary;
 import org.antlr.v4.runtime.misc.IntervalSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Singleton
 public class AntlrValidationTool {
+
+    private static final Logger LOG = LoggerFactory.getLogger(AntlrValidationTool.class);
 
     private final MainViewModel mainViewModel;
 
@@ -59,6 +63,7 @@ public class AntlrValidationTool {
                 parserInterpreter.parse(startRule.index);
             } catch (Exception e) {
                 // Ignore parsing exception, errorListener will catch syntax errors
+                LOG.trace("Validation parsing exception ignored, relying on error listener", e);
             }
         } else {
             tokenStream.fill();
