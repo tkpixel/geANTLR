@@ -1,0 +1,60 @@
+@startuml
+title Dynamic Grammar Loading Workflow
+
+actor User
+participant "GrammarLoaderService" as Loader
+participant "ANTLR Tool" as Tool
+participant "LexerTool" as LexerTool
+participant "DynamicGrammar" as Model
+
+User -> Loader: loadDynamicGrammar(parserFile)
+activate Loader
+
+Loader -> Loader: parse grammar text\n(search for 'tokenVocab')
+
+alt 'tokenVocab' found (Split Grammar)
+    Loader -> Loader: infer lexer name
+    Loader -> Loader: resolve lexer file path\n(current dir or import dirs)
+
+    alt Inferred Lexer File Exists
+        Loader -> LexerTool: create new Tool()
+        activate LexerTool
+        Loader -> LexerTool: loadGrammar(lexerFile)
+        LexerTool --> Loader: rootLexer (LexerGrammar)
+        Loader -> LexerTool: process(lexerGrammar, true)\n// generates .tokens & .interp
+        LexerTool --> Loader: complete
+        deactivate LexerTool
+
+        Loader -> Tool: loadGrammar(parserFile)
+        activate Tool
+        Tool --> Loader: parserGrammar
+        deactivate Tool
+    else Lexer File Not Found
+        Loader -> Tool: loadGrammar(parserFile)\n// fallback
+        activate Tool
+        Tool --> Loader: parserGrammar
+        deactivate Tool
+        Loader -> Loader: extract implicitLexer if combined
+    end
+else No 'tokenVocab' (Combined Grammar)
+    Loader -> Tool: loadGrammar(parserFile)
+    activate Tool
+    Tool --> Loader: parserGrammar
+    deactivate Tool
+    Loader -> Loader: extract implicitLexer if combined
+    Loader -> Loader: cast to LexerGrammar if parser is pure Lexer
+end
+
+Loader -> Model: new DynamicGrammar(parser, lexer)
+activate Model
+
+Loader -> Model: set ATN & Vocabulary
+Loader -> Model: createLexerInterpreter(emptyInput)
+Loader -> Model: createParserInterpreter(tokenStream)
+
+Model --> Loader: dynamicGrammar Instance
+deactivate Model
+
+Loader --> User: DynamicGrammar
+deactivate Loader
+@enduml
