@@ -5,6 +5,7 @@
 <?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ProgressIndicator?>
@@ -39,7 +40,7 @@
     </top>
 
     <center>
-        <javafx.scene.layout.StackPane>
+        <StackPane>
             <CodeArea fx:id="editorCodeArea" wrapText="true" styleClass="editor-code-area"/>
             <HBox fx:id="searchBar" spacing="5" visible="false" managed="false" alignment="CENTER_LEFT"
                   style="-fx-background-color: -color-bg-default; -fx-border-color: -color-border-default; -fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 2);"
@@ -84,7 +85,7 @@
                     <tooltip><javafx.scene.control.Tooltip text="Close (Esc)"/></tooltip>
                 </Button>
             </HBox>
-        </javafx.scene.layout.StackPane>
+        </StackPane>
     </center>
 
     <bottom>
