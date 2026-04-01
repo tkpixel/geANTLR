@@ -40,9 +40,9 @@
                 <!-- Spacer -->
                 <HBox HBox.hgrow="ALWAYS" />
 
-                <MenuButton styleClass="button-outlined, button-icon, no-arrow">
+                <MenuButton styleClass="button-icon, no-arrow, flat">
                     <graphic>
-                        <FontIcon iconLiteral="mdi2d-dots-horizontal" iconSize="20"/>
+                        <FontIcon iconLiteral="mdi2m-menu" iconSize="20"/>
                     </graphic>
                     <items>
                         <MenuItem fx:id="viewGrammarMenuItem" text="View Grammar" onAction="#viewGrammar">
