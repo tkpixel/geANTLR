@@ -400,7 +400,6 @@ public class EditorViewController {
                     TextPos endPos = computeTextPosFromOffset(match.end());
                     if (startPos != null && endPos != null) {
                         editorCodeArea.select(startPos, endPos);
-                        editorCodeArea.showParagraphInViewport(startPos.index());
                     }
                 }
             });
