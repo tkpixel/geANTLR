@@ -180,12 +180,11 @@ public class MainViewController {
             saveEditorContent(viewModel.getActiveEditors().get(0));
         } else {
             Map<String, EditorViewModel> choices = new LinkedHashMap<>();
-            for (int i = 0; i < viewModel.getActiveEditors().size(); i++) {
-                choices.put("Editor " + (i + 1), viewModel.getActiveEditors().get(i));
-            }
+            choices.put("Left Editor", viewModel.getActiveEditors().get(0));
+            choices.put("Right Editor", viewModel.getActiveEditors().get(1));
 
             ChoiceDialog<String> stringDialog = new ChoiceDialog<>(
-                    "Editor 1", choices.keySet());
+                    "Left Editor", choices.keySet());
             stringDialog.setTitle("Select Editor");
             stringDialog.setHeaderText("Multiple editors are open.");
             stringDialog.setContentText("Choose which editor's content to download:");
