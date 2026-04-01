@@ -50,6 +50,11 @@
                         <FontIcon iconLiteral="mdi2d-dots-horizontal" iconSize="20"/>
                     </graphic>
                     <items>
+                        <MenuItem text="Download Content" onAction="#downloadContent">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2d-download" iconSize="20"/>
+                            </graphic>
+                        </MenuItem>
                         <MenuItem text="Toggle Theme" onAction="#toggleTheme">
                             <graphic>
                                 <FontIcon fx:id="themeIcon" iconLiteral="mdi2w-white-balance-sunny" iconSize="20"/>

@@ -20,6 +20,7 @@ import javafx.collections.ListChangeListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.geantlr.FxmlControllerFactory;
 import org.geantlr.viewmodels.EditorViewModel;
@@ -33,6 +34,9 @@ import javafx.stage.DirectoryChooser;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ProgressBar;
 import javafx.concurrent.Task;
+import javafx.scene.control.ChoiceDialog;
+import java.nio.file.Files;
+import java.util.Optional;
 
 @Singleton
 public class MainViewController {
@@ -162,6 +166,61 @@ public class MainViewController {
             viewModel.addEditor(context.getBean(EditorViewModel.class));
         } else if (viewModel.getActiveEditors().size() == 2) {
             viewModel.removeEditor(viewModel.getActiveEditors().get(1));
+        }
+    }
+
+    @FXML
+    private void downloadContent() {
+        int numEditors = viewModel.getActiveEditors().size();
+        if (numEditors == 0) {
+            return;
+        }
+
+        if (numEditors == 1) {
+            saveEditorContent(viewModel.getActiveEditors().get(0));
+        } else {
+            Map<String, EditorViewModel> choices = new LinkedHashMap<>();
+            choices.put("Left Editor", viewModel.getActiveEditors().get(0));
+            choices.put("Right Editor", viewModel.getActiveEditors().get(1));
+
+            ChoiceDialog<String> stringDialog = new ChoiceDialog<>(
+                    "Left Editor", choices.keySet());
+            stringDialog.setTitle("Select Editor");
+            stringDialog.setHeaderText("Multiple editors are open.");
+            stringDialog.setContentText("Choose which editor's content to download:");
+
+            Optional<String> result = stringDialog.showAndWait();
+            if (result.isPresent()) {
+                saveEditorContent(choices.get(result.get()));
+            }
+        }
+    }
+
+    private void saveEditorContent(EditorViewModel editor) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save Content");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Text Files", "*.txt"),
+                new FileChooser.ExtensionFilter("Java Files", "*.java"),
+                new FileChooser.ExtensionFilter("All Files", "*.*"));
+
+        File file = fileChooser.showSaveDialog(editorSplitPane.getScene().getWindow());
+        if (file != null) {
+            try {
+                Files.writeString(file.toPath(), editor.getTextContent());
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("File Saved");
+                alert.setHeaderText(null);
+                alert.setContentText("Content saved to " + file.getAbsolutePath());
+                alert.showAndWait();
+            } catch (IOException e) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Error Saving File");
+                alert.setHeaderText("Failed to save content to file");
+                alert.setContentText(e.getMessage());
+                e.printStackTrace();
+                alert.showAndWait();
+            }
         }
     }
 
