@@ -25,6 +25,8 @@
             <version>25-ea+21</version>
         </dependency>
         <!-- Adding Incubator for CodeArea as required by the issue -->
+        <!-- Note: The main JAR has been replaced with the win-platform JAR to ensure
+             the module-info.class is found by the Maven Compiler Plugin on Windows -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>jfx-incubator-richtext</artifactId>
@@ -150,8 +152,6 @@
                     <release>25</release>
                     <compilerArgs>
                         <arg>--enable-preview</arg>
-                        <arg>--add-modules</arg>
-                        <arg>jfx.incubator.richtext</arg>
                     </compilerArgs>
                     <annotationProcessorPaths>
                         <path>
