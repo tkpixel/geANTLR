@@ -83,6 +83,11 @@
     -fx-max-width:        500px;
 }
 
+.bracket-match {
+    -fx-background-color: #43454a;
+    -fx-font-weight: bold;
+}
+
 /* Style the line numbers in the primary accent color - Force with !important */
 .editor-code-area .left-side .text,
 .editor-code-area .left-side .line-number,

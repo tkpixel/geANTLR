@@ -42,6 +42,7 @@
     <center>
         <StackPane>
             <CodeArea fx:id="editorCodeArea" wrapText="true" styleClass="editor-code-area"/>
+            <javafx.scene.layout.Pane fx:id="bracketLineOverlay" mouseTransparent="true" />
             <HBox fx:id="searchBar" spacing="5" visible="false" managed="false" alignment="CENTER_LEFT"
                   style="-fx-background-color: -color-bg-default; -fx-border-color: -color-border-default; -fx-border-width: 1; -fx-border-radius: 15; -fx-background-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 2);"
                   StackPane.alignment="TOP_RIGHT" maxHeight="-Infinity" maxWidth="-Infinity">

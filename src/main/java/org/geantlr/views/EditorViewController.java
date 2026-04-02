@@ -40,6 +40,9 @@ public class EditorViewController {
     private CodeArea editorCodeArea;
 
     @FXML
+    private javafx.scene.layout.Pane bracketLineOverlay;
+
+    @FXML
     private FlowPane suggestionsPane;
 
     @FXML
@@ -98,6 +101,7 @@ public class EditorViewController {
 
     private EditorViewModel viewModel;
     private final TokenHighlightMappingService tokenHighlightMappingService;
+    private javafx.scene.shape.Line connectionLine;
 
     @Inject
     public EditorViewController(TokenHighlightMappingService tokenHighlightMappingService) {
@@ -380,6 +384,11 @@ public class EditorViewController {
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
             });
 
+            this.viewModel.matchedBracketsProperty().addListener((_, _, newVal) -> {
+                editorCodeArea.setSyntaxDecorator(null);
+                editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
+            });
+
             this.viewModel.getTokens().addListener((ListChangeListener<Token>) _ -> {
                 editorCodeArea.setSyntaxDecorator(null);
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
@@ -430,6 +439,25 @@ public class EditorViewController {
                 }
             });
 
+            if (bracketLineOverlay != null) {
+                connectionLine = new javafx.scene.shape.Line();
+                connectionLine.setStyle("-fx-stroke: #4c5052; -fx-stroke-width: 1px;");
+                connectionLine.setVisible(false);
+                bracketLineOverlay.getChildren().add(connectionLine);
+
+                // Track bounds changes to redraw bracket line on scroll/layout changes
+                editorCodeArea.needsLayoutProperty().addListener((_, _, _) -> updateBracketLine());
+                editorCodeArea.boundsInLocalProperty().addListener((_, _, _) -> updateBracketLine());
+                editorCodeArea.widthProperty().addListener((_, _, _) -> updateBracketLine());
+                editorCodeArea.heightProperty().addListener((_, _, _) -> updateBracketLine());
+
+                // Since CodeArea's direct properties might not fire constantly on pure scroll
+                // we listen to scroll events and layout passes.
+                editorCodeArea.addEventHandler(javafx.scene.input.ScrollEvent.ANY, _ -> updateBracketLine());
+
+                this.viewModel.matchedBracketsProperty().addListener((_, _, _) -> updateBracketLine());
+            }
+
             this.viewModel.getSuggestedTokens().addListener((ListChangeListener<String>) _ -> {
                 suggestionsPane.getChildren().clear();
                 for (String token : this.viewModel.getSuggestedTokens()) {
@@ -440,6 +468,95 @@ public class EditorViewController {
                 }
             });
         }
+    }
+
+    private void updateBracketLine() {
+        if (connectionLine == null || bracketLineOverlay == null || viewModel == null) {
+            return;
+        }
+
+        EditorViewModel.MatchedBracketsRecord matchedBrackets = viewModel.matchedBracketsProperty().get();
+        if (matchedBrackets == null) {
+            connectionLine.setVisible(false);
+            return;
+        }
+
+        int openIdx = matchedBrackets.openIndex();
+        int closeIdx = matchedBrackets.closeIndex();
+
+        TextPos openPos = computeTextPosFromOffset(openIdx);
+        TextPos closePos = computeTextPosFromOffset(closeIdx);
+
+        if (openPos == null || closePos == null || openPos.index() == closePos.index()) {
+            // Do not draw if on same line
+            connectionLine.setVisible(false);
+            return;
+        }
+
+        // Must run in runLater because TextFlow nodes might be recreating right now
+        javafx.application.Platform.runLater(() -> {
+            try {
+                javafx.geometry.Rectangle2D openCaret = getCaretBounds(openPos);
+                javafx.geometry.Rectangle2D closeCaret = getCaretBounds(closePos);
+
+                if (openCaret != null && closeCaret != null) {
+                    connectionLine.setStartX(openCaret.getMinX());
+                    connectionLine.setStartY(openCaret.getMaxY());
+                    connectionLine.setEndX(closeCaret.getMinX());
+                    connectionLine.setEndY(closeCaret.getMinY());
+                    connectionLine.setVisible(true);
+                } else {
+                    connectionLine.setVisible(false);
+                }
+            } catch (Exception e) {
+                LOG.warning("Failed to calculate bracket line: " + e.getMessage());
+                connectionLine.setVisible(false);
+            }
+        });
+    }
+
+    private javafx.geometry.Rectangle2D getCaretBounds(TextPos pos) {
+        if (pos == null) return null;
+
+        int targetPara = pos.index();
+        int charIdx = pos.offset();
+
+        // Find all TextFlow elements inside editorCodeArea
+        for (javafx.scene.Node node : editorCodeArea.lookupAll("TextFlow")) {
+            if (node instanceof javafx.scene.text.TextFlow textFlow) {
+                // Determine if this TextFlow belongs to targetPara.
+                String modelText = editorCodeArea.getModel().getPlainText(targetPara);
+
+                // Construct the text from this TextFlow
+                StringBuilder flowText = new StringBuilder();
+                for (javafx.scene.Node child : textFlow.getChildren()) {
+                    if (child instanceof javafx.scene.text.Text textNode) {
+                        flowText.append(textNode.getText());
+                    }
+                }
+
+                if (flowText.toString().equals(modelText)) {
+                    javafx.scene.text.LayoutInfo layoutInfo = textFlow.getLayoutInfo();
+                    if (layoutInfo != null && charIdx <= flowText.length()) {
+                        try {
+                            javafx.scene.text.CaretInfo caretInfo = layoutInfo.caretInfoAt(charIdx, true);
+                            if (caretInfo != null && caretInfo.getSegmentCount() > 0) {
+                                javafx.geometry.Rectangle2D localCaret = caretInfo.getSegmentAt(0);
+                                // Transform local coordinates of the TextFlow to bracketLineOverlay coordinates
+                                javafx.geometry.Bounds localBounds = new javafx.geometry.BoundingBox(localCaret.getMinX(), localCaret.getMinY(), localCaret.getWidth(), localCaret.getHeight());
+                                javafx.geometry.Bounds overlayBounds = bracketLineOverlay.sceneToLocal(textFlow.localToScene(localBounds));
+
+                                return new javafx.geometry.Rectangle2D(overlayBounds.getMinX(), overlayBounds.getMinY(), overlayBounds.getWidth(), overlayBounds.getHeight());
+                            }
+                        } catch (Exception e) {
+                            // index out of bounds or unsupported
+                        }
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     private SyntaxDecorator createSyntaxDecorator() {
@@ -497,6 +614,24 @@ public class EditorViewController {
                     } else {
                         // No tokens to style, just add the whole text
                         builder.addSegment(text);
+                    }
+
+                    EditorViewModel.MatchedBracketsRecord matchedBrackets = viewModel.matchedBracketsProperty().get();
+                    if (matchedBrackets != null) {
+                        int paraStartOffset = computeAbsoluteOffset(TextPos.ofLeading(paragraphIndex, 0));
+                        int paraEndOffset = paraStartOffset + text.length();
+
+                        if (matchedBrackets.openIndex() >= paraStartOffset && matchedBrackets.openIndex() < paraEndOffset) {
+                            int localOpenIdx = matchedBrackets.openIndex() - paraStartOffset;
+                            // Applying style via addWithStyleNames here would APPEND text, so we can't do that.
+                            // We use addHighlight instead to overlay the style on existing segments.
+                            // We use Color.web to match the Darcula color requested for brackets #43454a.
+                            builder.addHighlight(localOpenIdx, 1, Color.web("#43454a"));
+                        }
+                        if (matchedBrackets.closeIndex() >= paraStartOffset && matchedBrackets.closeIndex() < paraEndOffset) {
+                            int localCloseIdx = matchedBrackets.closeIndex() - paraStartOffset;
+                            builder.addHighlight(localCloseIdx, 1, Color.web("#43454a"));
+                        }
                     }
 
                     if (viewModel.getSearchMatches() != null && !viewModel.getSearchMatches().isEmpty()) {

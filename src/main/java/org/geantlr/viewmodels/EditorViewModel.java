@@ -55,6 +55,9 @@ public class EditorViewModel {
     private final StringProperty searchCountText = new SimpleStringProperty("No results");
     private final IntegerProperty currentMatchIndex = new SimpleIntegerProperty(-1);
 
+    public record MatchedBracketsRecord(int openIndex, int closeIndex) {}
+    private final ObjectProperty<MatchedBracketsRecord> matchedBrackets = new SimpleObjectProperty<>(null);
+
     public record SearchMatch(int start, int end) {}
     private final ObservableList<SearchMatch> searchMatches = FXCollections.observableArrayList();
     private final PauseTransition searchDebounce = new PauseTransition(Duration.millis(150));
@@ -405,6 +408,98 @@ public class EditorViewModel {
     public void onCaretPositionChanged(int caretPosition) {
         this.currentCaretPosition = caretPosition;
         updateSuggestions();
+        updateMatchedBrackets(caretPosition);
+    }
+
+    public ObjectProperty<MatchedBracketsRecord> matchedBracketsProperty() {
+        return matchedBrackets;
+    }
+
+    private void updateMatchedBrackets(int caretPosition) {
+        String text = textContent.get();
+        if (text == null || text.isEmpty() || caretPosition < 0 || caretPosition > text.length()) {
+            matchedBrackets.set(null);
+            return;
+        }
+
+        // Check if caret is exactly at a bracket, or right after one
+        int charIdx = -1;
+        char bracketChar = '\0';
+
+        // Prefer char to the right
+        if (caretPosition < text.length()) {
+            char c = text.charAt(caretPosition);
+            if (isBracket(c)) {
+                charIdx = caretPosition;
+                bracketChar = c;
+            }
+        }
+
+        // Fallback to char to the left
+        if (charIdx == -1 && caretPosition > 0) {
+            char c = text.charAt(caretPosition - 1);
+            if (isBracket(c)) {
+                charIdx = caretPosition - 1;
+                bracketChar = c;
+            }
+        }
+
+        if (charIdx == -1) {
+            matchedBrackets.set(null);
+            return;
+        }
+
+        int matchIdx = findMatchingBracket(text, charIdx, bracketChar);
+        if (matchIdx != -1) {
+            // Keep smaller index as openIndex, larger as closeIndex
+            int openIdx = Math.min(charIdx, matchIdx);
+            int closeIdx = Math.max(charIdx, matchIdx);
+            matchedBrackets.set(new MatchedBracketsRecord(openIdx, closeIdx));
+        } else {
+            matchedBrackets.set(null);
+        }
+    }
+
+    private boolean isBracket(char c) {
+        return c == '(' || c == ')' || c == '{' || c == '}' || c == '[' || c == ']' || c == '`';
+    }
+
+    private int findMatchingBracket(String text, int startIdx, char bracketChar) {
+        char openChar, closeChar;
+        boolean forward;
+
+        switch (bracketChar) {
+            case '(': openChar = '('; closeChar = ')'; forward = true; break;
+            case ')': openChar = ')'; closeChar = '('; forward = false; break;
+            case '{': openChar = '{'; closeChar = '}'; forward = true; break;
+            case '}': openChar = '}'; closeChar = '{'; forward = false; break;
+            case '[': openChar = '['; closeChar = ']'; forward = true; break;
+            case ']': openChar = ']'; closeChar = '['; forward = false; break;
+            case '`':
+                // Backticks are symmetric. We try searching forward first.
+                // If we don't find it, we search backward.
+                int nextMatch = text.indexOf('`', startIdx + 1);
+                if (nextMatch != -1) return nextMatch;
+                return text.lastIndexOf('`', startIdx - 1);
+            default: return -1;
+        }
+
+        int count = 1;
+        int step = forward ? 1 : -1;
+        int idx = startIdx + step;
+
+        while (idx >= 0 && idx < text.length()) {
+            char c = text.charAt(idx);
+            if (c == closeChar) {
+                count--;
+                if (count == 0) return idx;
+            } else if (c == openChar) {
+                count++;
+            }
+            idx += step;
+        }
+
+        return -1;
     }
 
     private void updateSuggestions() {
