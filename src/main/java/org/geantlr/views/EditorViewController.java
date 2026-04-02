@@ -526,7 +526,8 @@ public class EditorViewController {
                     double verticalX = indentCaret.getMinX();
 
                     // Prevent the line from drawing backwards if the closing brace is somehow higher up
-                    if (closeCaret.getMinY() > openCaret.getMaxY()) {
+                    // Allow >= to handle adjacent lines (where minY of close equals maxY of open)
+                    if (closeCaret.getMinY() >= openCaret.getMaxY()) {
                         connectionLine.setStartX(verticalX);
                         connectionLine.setStartY(openCaret.getMaxY());
                         connectionLine.setEndX(verticalX);
@@ -555,26 +556,35 @@ public class EditorViewController {
         // The TextCell class is com.sun.jfx.incubator.scene.control.richtext.TextCell which extends BorderPane
         // and contains a getIndex() method returning the paragraph index.
         for (javafx.scene.Node cell : editorCodeArea.lookupAll(".content > *")) {
+            boolean isMatch = false;
             try {
                 // Use reflection to check if this cell's getIndex() matches our target paragraph
                 java.lang.reflect.Method getIndexMethod = cell.getClass().getMethod("getIndex");
                 Object indexVal = getIndexMethod.invoke(cell);
 
                 if (indexVal instanceof Integer && ((Integer) indexVal) == targetPara) {
-                    // This is the exact TextCell for our paragraph. Now find its TextFlow.
-                    javafx.scene.text.TextFlow textFlow = null;
-                    if (cell instanceof javafx.scene.Parent parentCell) {
-                        for (javafx.scene.Node child : parentCell.getChildrenUnmodifiable()) {
-                            if (child instanceof javafx.scene.text.TextFlow flow) {
-                                textFlow = flow;
-                                break;
-                            }
+                    isMatch = true;
+                }
+            } catch (Exception e) {
+                // Ignore nodes that do not have getIndex()
+            }
+
+            if (isMatch) {
+                // This is the exact TextCell for our paragraph. Now find its TextFlow.
+                javafx.scene.text.TextFlow textFlow = null;
+                if (cell instanceof javafx.scene.Parent parentCell) {
+                    for (javafx.scene.Node child : parentCell.getChildrenUnmodifiable()) {
+                        if (child instanceof javafx.scene.text.TextFlow flow) {
+                            textFlow = flow;
+                            break;
                         }
                     }
+                }
 
-                    if (textFlow != null) {
-                        javafx.scene.text.LayoutInfo layoutInfo = textFlow.getLayoutInfo();
-                        if (layoutInfo != null) {
+                if (textFlow != null) {
+                    javafx.scene.text.LayoutInfo layoutInfo = textFlow.getLayoutInfo();
+                    if (layoutInfo != null) {
+                        try {
                             javafx.scene.text.CaretInfo caretInfo = layoutInfo.caretInfoAt(charIdx, true);
                             if (caretInfo != null && caretInfo.getSegmentCount() > 0) {
                                 javafx.geometry.Rectangle2D localCaret = caretInfo.getSegmentAt(0);
@@ -584,13 +594,13 @@ public class EditorViewController {
 
                                 return new javafx.geometry.Rectangle2D(overlayBounds.getMinX(), overlayBounds.getMinY(), overlayBounds.getWidth(), overlayBounds.getHeight());
                             }
+                        } catch (Exception ex) {
+                            LOG.warning("caretInfoAt/localToScene threw an exception: " + ex.getMessage());
                         }
                     }
-                    // Since we found the exact cell, we can break early whether we found layout info or not.
-                    break;
                 }
-            } catch (Exception e) {
-                // Ignore nodes that do not have getIndex()
+                // Since we found the exact cell, we can break early whether we found layout info or not.
+                break;
             }
         }
 
