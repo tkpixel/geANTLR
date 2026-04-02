@@ -422,7 +422,7 @@ public class EditorViewModel {
             return;
         }
 
-        // Check if caret is exactly at a bracket, or right after one
+        // 1. Check if caret is exactly at a bracket, or right after one (highest priority)
         int charIdx = -1;
         char bracketChar = '\0';
 
@@ -444,21 +444,49 @@ public class EditorViewModel {
             }
         }
 
-        if (charIdx == -1) {
-            matchedBrackets.set(null);
-            return;
+        if (charIdx != -1) {
+            int matchIdx = findMatchingBracket(text, charIdx, bracketChar);
+            if (matchIdx != -1) {
+                int openIdx = Math.min(charIdx, matchIdx);
+                int closeIdx = Math.max(charIdx, matchIdx);
+                char actualBracketChar = text.charAt(openIdx);
+                matchedBrackets.set(new MatchedBracketsRecord(openIdx, closeIdx, actualBracketChar));
+                return;
+            }
         }
 
-        int matchIdx = findMatchingBracket(text, charIdx, bracketChar);
-        if (matchIdx != -1) {
-            // Keep smaller index as openIndex, larger as closeIndex
-            int openIdx = Math.min(charIdx, matchIdx);
-            int closeIdx = Math.max(charIdx, matchIdx);
-            char actualBracketChar = text.charAt(openIdx);
-            matchedBrackets.set(new MatchedBracketsRecord(openIdx, closeIdx, actualBracketChar));
-        } else {
-            matchedBrackets.set(null);
+        // 2. Caret is not on a bracket – find the innermost enclosing curly-brace block
+        //    so that the IntelliJ-style guide line is always visible inside a block.
+        int enclosingOpen = findEnclosingCurlyBrace(text, caretPosition);
+        if (enclosingOpen != -1) {
+            int enclosingClose = findMatchingBracket(text, enclosingOpen, '{');
+            if (enclosingClose != -1) {
+                matchedBrackets.set(new MatchedBracketsRecord(enclosingOpen, enclosingClose, '{'));
+                return;
+            }
         }
+
+        matchedBrackets.set(null);
+    }
+
+    /**
+     * Walks backwards from {@code caretPosition} to find the nearest unmatched {@code '{'}.
+     * Returns its index in {@code text}, or -1 if none found.
+     */
+    private int findEnclosingCurlyBrace(String text, int caretPosition) {
+        int depth = 0;
+        for (int i = caretPosition - 1; i >= 0; i--) {
+            char c = text.charAt(i);
+            if (c == '}') {
+                depth++;
+            } else if (c == '{') {
+                if (depth == 0) {
+                    return i;
+                }
+                depth--;
+            }
+        }
+        return -1;
     }
 
     private boolean isBracket(char c) {
