@@ -40,6 +40,9 @@ public class EditorViewController {
     private CodeArea editorCodeArea;
 
     @FXML
+    private javafx.scene.layout.Pane bracketLineOverlay;
+
+    @FXML
     private FlowPane suggestionsPane;
 
     @FXML
@@ -98,6 +101,8 @@ public class EditorViewController {
 
     private EditorViewModel viewModel;
     private final TokenHighlightMappingService tokenHighlightMappingService;
+    private javafx.scene.shape.Line connectionLine;
+    private javafx.scene.canvas.Canvas bracketCanvas;
 
     @Inject
     public EditorViewController(TokenHighlightMappingService tokenHighlightMappingService) {
@@ -380,6 +385,11 @@ public class EditorViewController {
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
             });
 
+            this.viewModel.matchedBracketsProperty().addListener((_, _, newVal) -> {
+                editorCodeArea.setSyntaxDecorator(null);
+                editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
+            });
+
             this.viewModel.getTokens().addListener((ListChangeListener<Token>) _ -> {
                 editorCodeArea.setSyntaxDecorator(null);
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
@@ -430,6 +440,27 @@ public class EditorViewController {
                 }
             });
 
+            if (bracketLineOverlay != null) {
+                // Use a Canvas overlay so we can draw arbitrary lines without JavaFX shape positioning issues.
+                // The canvas is bound to the overlay pane's size so it always covers the full editor area.
+                bracketCanvas = new javafx.scene.canvas.Canvas();
+                bracketCanvas.setMouseTransparent(true);
+                bracketCanvas.widthProperty().bind(bracketLineOverlay.widthProperty());
+                bracketCanvas.heightProperty().bind(bracketLineOverlay.heightProperty());
+                bracketLineOverlay.getChildren().add(bracketCanvas);
+
+                // Keep the old connectionLine for compatibility but we won't use it visually
+                connectionLine = new javafx.scene.shape.Line();
+                connectionLine.setVisible(false);
+
+                // Redraw whenever layout changes or the bracket record changes
+                bracketLineOverlay.widthProperty().addListener((_, _, _) -> updateBracketLine());
+                bracketLineOverlay.heightProperty().addListener((_, _, _) -> updateBracketLine());
+                editorCodeArea.needsLayoutProperty().addListener((_, _, _) -> updateBracketLine());
+                editorCodeArea.addEventHandler(javafx.scene.input.ScrollEvent.ANY, _ -> updateBracketLine());
+                this.viewModel.matchedBracketsProperty().addListener((_, _, _) -> updateBracketLine());
+            }
+
             this.viewModel.getSuggestedTokens().addListener((ListChangeListener<String>) _ -> {
                 suggestionsPane.getChildren().clear();
                 for (String token : this.viewModel.getSuggestedTokens()) {
@@ -440,6 +471,234 @@ public class EditorViewController {
                 }
             });
         }
+    }
+
+    private void updateBracketLine() {
+        if (bracketCanvas == null || bracketLineOverlay == null || viewModel == null) {
+            return;
+        }
+
+        EditorViewModel.MatchedBracketsRecord matchedBrackets = viewModel.matchedBracketsProperty().get();
+
+        // Clear canvas regardless – always redraw from scratch
+        javafx.scene.canvas.GraphicsContext gc = bracketCanvas.getGraphicsContext2D();
+        gc.clearRect(0, 0, bracketCanvas.getWidth(), bracketCanvas.getHeight());
+
+        if (matchedBrackets == null || matchedBrackets.bracketChar() != '{') {
+            return;
+        }
+
+        TextPos openPos = computeTextPosFromOffset(matchedBrackets.openIndex());
+        TextPos closePos = computeTextPosFromOffset(matchedBrackets.closeIndex());
+
+        if (openPos == null || closePos == null || openPos.index() == closePos.index()) {
+            return;
+        }
+
+        // Schedule the pixel-coordinate lookup after the layout pass is complete
+        javafx.application.Platform.runLater(() -> drawBracketLine(gc, openPos, closePos));
+    }
+
+    private void drawBracketLine(javafx.scene.canvas.GraphicsContext gc, TextPos openPos, TextPos closePos) {
+        try {
+            // Find the first non-whitespace column on the opening-brace line
+            String openLineText = editorCodeArea.getModel().getPlainText(openPos.index());
+            int firstNonWsIdx = 0;
+            while (firstNonWsIdx < openLineText.length() && Character.isWhitespace(openLineText.charAt(firstNonWsIdx))) {
+                firstNonWsIdx++;
+            }
+            if (firstNonWsIdx >= openLineText.length()) {
+                firstNonWsIdx = openPos.offset();
+            }
+
+            TextPos indentPos = TextPos.ofLeading(openPos.index(), firstNonWsIdx);
+
+            javafx.geometry.Point2D indentPt  = getCharTopLeft(indentPos);
+            javafx.geometry.Point2D openPt    = getCharTopLeft(openPos);
+            javafx.geometry.Point2D closePt   = getCharTopLeft(closePos);
+
+            LOG.info("[BracketLine] indentPt=" + indentPt + " openPt=" + openPt + " closePt=" + closePt
+                    + "  canvas=" + bracketCanvas.getWidth() + "x" + bracketCanvas.getHeight());
+
+            double overlayHeight = bracketCanvas.getHeight();
+
+            // Determine X: prefer indent column, then open-brace, finally close-brace
+            // (the closing brace is always at the same indentation level as the block start)
+            Double verticalX = null;
+            if (indentPt != null) {
+                verticalX = indentPt.getX();
+            } else if (openPt != null) {
+                verticalX = openPt.getX();
+            } else if (closePt != null) {
+                verticalX = closePt.getX();
+            }
+
+            if (verticalX == null) {
+                LOG.info("[BracketLine] verticalX could not be determined (all three positions outside viewport) – skipping draw");
+                return;
+            }
+
+            // Y-start: bottom of the opening-brace row.
+            // If the opening brace is scrolled above the viewport, clamp to the top edge.
+            double lineHeight = estimateLineHeight(openPos);
+            double startY = (openPt != null) ? openPt.getY() + lineHeight : 0.0;
+
+            // Y-end: top of the closing-brace row.
+            // If the closing brace is scrolled below the viewport, clamp to the bottom edge.
+            double endY = (closePt != null) ? closePt.getY() : overlayHeight;
+
+            if (endY <= startY) {
+                LOG.info("[BracketLine] endY(" + endY + ") <= startY(" + startY + ") – skipping draw");
+                return;
+            }
+
+            // Draw the vertical guide line on the canvas
+            gc.clearRect(0, 0, bracketCanvas.getWidth(), bracketCanvas.getHeight());
+            gc.setStroke(javafx.scene.paint.Color.web("#4c5052"));
+            gc.setLineWidth(1.0);
+            // Snap to pixel boundary for crisp rendering
+            double x = Math.floor(verticalX) + 0.5;
+            gc.strokeLine(x, startY, x, endY);
+
+            LOG.info("[BracketLine] drew line x=" + x + " y=" + startY + "→" + endY);
+
+        } catch (Exception e) {
+            LOG.warning("[BracketLine] Exception during draw: " + e.getMessage());
+        }
+    }
+
+    /** Returns the top-left pixel coordinate (in bracketLineOverlay space) of the character at {@code pos},
+     *  or null if the paragraph is currently not rendered in the viewport. */
+    private javafx.geometry.Point2D getCharTopLeft(TextPos pos) {
+        if (pos == null) return null;
+
+        int targetPara = pos.index();
+        int charIdx    = pos.offset();
+
+        // ── Step 1: Collect and sort all visible TextFlows by their on-screen Y position ──
+        java.util.List<javafx.scene.text.TextFlow> flows = new java.util.ArrayList<>();
+        for (javafx.scene.Node cell : editorCodeArea.lookupAll(".content > *")) {
+            javafx.scene.text.TextFlow tf = findTextFlow(cell);
+            if (tf != null) flows.add(tf);
+        }
+
+        if (flows.isEmpty()) {
+            LOG.fine("[BracketLine] No TextFlows found via .content > *");
+            return null;
+        }
+
+        flows.sort(java.util.Comparator.comparingDouble(
+                f -> f.localToScene(f.getBoundsInLocal()).getMinY()));
+
+        // ── Step 2: Find which TextFlow the caret is currently in ──
+        int caretFlowIndex = -1;
+        int caretParaIndex = -1;
+
+        TextPos caretPos = editorCodeArea.getCaretPosition();
+        if (caretPos != null) {
+            caretParaIndex = caretPos.index();
+
+            // Locate the caret node (a Path rendered inside the CodeArea skin)
+            javafx.scene.Node caretNode = editorCodeArea.lookup(".caret");
+            if (caretNode != null) {
+                javafx.geometry.Bounds caretBounds = caretNode.localToScene(caretNode.getBoundsInLocal());
+                double caretY = caretBounds.getCenterY();
+
+                for (int i = 0; i < flows.size(); i++) {
+                    javafx.geometry.Bounds fb = flows.get(i).localToScene(flows.get(i).getBoundsInLocal());
+                    if (caretY >= fb.getMinY() && caretY <= fb.getMaxY()) {
+                        caretFlowIndex = i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        LOG.info("[BracketLine] caretParaIndex=" + caretParaIndex
+                + " caretFlowIndex=" + caretFlowIndex
+                + " targetPara=" + targetPara
+                + " flows=" + flows.size());
+
+        // ── Step 3: Map targetPara → its TextFlow ──
+        javafx.scene.text.TextFlow targetFlow = null;
+
+        if (caretFlowIndex != -1 && caretParaIndex != -1) {
+            // Robust: derive index from caret anchor
+            int targetFlowIndex = caretFlowIndex - (caretParaIndex - targetPara);
+            if (targetFlowIndex >= 0 && targetFlowIndex < flows.size()) {
+                targetFlow = flows.get(targetFlowIndex);
+            }
+        }
+
+        if (targetFlow == null) {
+            // Fallback: try reflection-based getIndex() (works after a scene-graph lookup)
+            for (javafx.scene.Node cell : editorCodeArea.lookupAll(".content > *")) {
+                try {
+                    java.lang.reflect.Method m = cell.getClass().getMethod("getIndex");
+                    Object val = m.invoke(cell);
+                    if (val instanceof Integer idx && idx == targetPara) {
+                        targetFlow = findTextFlow(cell);
+                        break;
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+
+        if (targetFlow == null) {
+            LOG.fine("[BracketLine] para=" + targetPara + " not in visible viewport");
+            return null;
+        }
+
+        // ── Step 4: Get pixel coordinate via LayoutInfo / CaretInfo ──
+        javafx.scene.text.LayoutInfo li = targetFlow.getLayoutInfo();
+        if (li == null) {
+            LOG.fine("[BracketLine] LayoutInfo null for para=" + targetPara);
+            return null;
+        }
+
+        try {
+            javafx.scene.text.CaretInfo ci = li.caretInfoAt(charIdx, true);
+            if (ci == null || ci.getSegmentCount() == 0) {
+                LOG.fine("[BracketLine] CaretInfo empty para=" + targetPara + " charIdx=" + charIdx);
+                return null;
+            }
+
+            javafx.geometry.Rectangle2D seg = ci.getSegmentAt(0);
+            javafx.geometry.Bounds local = new javafx.geometry.BoundingBox(
+                    seg.getMinX(), seg.getMinY(), seg.getWidth(), seg.getHeight());
+            javafx.geometry.Bounds inOverlay =
+                    bracketLineOverlay.sceneToLocal(targetFlow.localToScene(local));
+
+            return new javafx.geometry.Point2D(inOverlay.getMinX(), inOverlay.getMinY());
+        } catch (Exception ex) {
+            LOG.warning("[BracketLine] caretInfoAt threw: " + ex.getMessage());
+            return null;
+        }
+    }
+
+    /** Recursively finds the first TextFlow in the child hierarchy of {@code node}. */
+    private javafx.scene.text.TextFlow findTextFlow(javafx.scene.Node node) {
+        if (node instanceof javafx.scene.text.TextFlow tf) return tf;
+        if (node instanceof javafx.scene.Parent p) {
+            for (javafx.scene.Node child : p.getChildrenUnmodifiable()) {
+                javafx.scene.text.TextFlow found = findTextFlow(child);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    /** Estimates the line height by measuring the TextFlow for {@code pos}; falls back to a heuristic. */
+    private double estimateLineHeight(TextPos pos) {
+        for (javafx.scene.Node cell : editorCodeArea.lookupAll(".content > *")) {
+            javafx.scene.text.TextFlow tf = findTextFlow(cell);
+            if (tf != null) {
+                double h = tf.getHeight();
+                if (h > 0) return h;
+            }
+        }
+        // Fallback: derive from font size (14pt ≈ 19px at 96 dpi)
+        return viewModel != null ? viewModel.getFontSize() * 1.4 : 19.0;
     }
 
     private SyntaxDecorator createSyntaxDecorator() {
@@ -497,6 +756,24 @@ public class EditorViewController {
                     } else {
                         // No tokens to style, just add the whole text
                         builder.addSegment(text);
+                    }
+
+                    EditorViewModel.MatchedBracketsRecord matchedBrackets = viewModel.matchedBracketsProperty().get();
+                    if (matchedBrackets != null) {
+                        int paraStartOffset = computeAbsoluteOffset(TextPos.ofLeading(paragraphIndex, 0));
+                        int paraEndOffset = paraStartOffset + text.length();
+
+                        if (matchedBrackets.openIndex() >= paraStartOffset && matchedBrackets.openIndex() < paraEndOffset) {
+                            int localOpenIdx = matchedBrackets.openIndex() - paraStartOffset;
+                            // Applying style via addWithStyleNames here would APPEND text, so we can't do that.
+                            // We use addHighlight instead to overlay the style on existing segments.
+                            // We use Color.web to match the Darcula color requested for brackets #43454a.
+                            builder.addHighlight(localOpenIdx, 1, Color.web("#43454a"));
+                        }
+                        if (matchedBrackets.closeIndex() >= paraStartOffset && matchedBrackets.closeIndex() < paraEndOffset) {
+                            int localCloseIdx = matchedBrackets.closeIndex() - paraStartOffset;
+                            builder.addHighlight(localCloseIdx, 1, Color.web("#43454a"));
+                        }
                     }
 
                     if (viewModel.getSearchMatches() != null && !viewModel.getSearchMatches().isEmpty()) {
