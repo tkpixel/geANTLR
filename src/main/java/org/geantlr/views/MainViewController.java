@@ -11,6 +11,7 @@ import javafx.scene.control.Button;
 import javafx.application.Platform;
 import javafx.scene.control.SplitPane;
 import javafx.scene.layout.Region;
+import javafx.scene.control.MenuItem;
 import javafx.scene.layout.StackPane;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HeaderBar;
@@ -48,7 +49,7 @@ public class MainViewController {
     private SplitPane editorSplitPane;
 
     @FXML
-    private Button viewGrammarBtn;
+    private MenuItem viewGrammarMenuItem;
 
     @FXML
     private Button loadDomainModelButton;
@@ -87,11 +88,8 @@ public class MainViewController {
             });
         }
 
-        if (viewGrammarBtn != null) {
-            viewGrammarBtn.setAccessibleText("View Grammar");
-            viewGrammarBtn.setAccessibleHelp("Opens the currently loaded grammar in a new window.");
-            viewGrammarBtn.setTooltip(new javafx.scene.control.Tooltip("View Grammar"));
-            viewGrammarBtn.disableProperty().bind(viewModel.dynamicGrammarProperty().isNull());
+        if (viewGrammarMenuItem != null) {
+            viewGrammarMenuItem.disableProperty().bind(viewModel.dynamicGrammarProperty().isNull());
         }
 
 

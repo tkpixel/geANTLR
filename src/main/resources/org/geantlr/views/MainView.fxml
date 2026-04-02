@@ -30,11 +30,6 @@
                         <FontIcon iconLiteral="mdi2f-file-code-outline" iconSize="20"/>
                     </graphic>
                 </Button>
-                <Button fx:id="viewGrammarBtn" text="View Grammar" onAction="#viewGrammar" styleClass="button-outlined">
-                    <graphic>
-                        <FontIcon iconLiteral="mdi2e-eye-outline" iconSize="20"/>
-                    </graphic>
-                </Button>
                 <Button fx:id="loadDomainModelButton" text="Load Domain Model (.puml)" onAction="#loadDomainModel" styleClass="button-outlined">
                     <graphic>
                         <FontIcon iconLiteral="mdi2f-file-tree" iconSize="16"/>
@@ -45,11 +40,16 @@
                 <!-- Spacer -->
                 <HBox HBox.hgrow="ALWAYS" />
 
-                <MenuButton styleClass="button-outlined, button-icon, no-arrow">
+                <MenuButton styleClass="button-icon, no-arrow, flat">
                     <graphic>
-                        <FontIcon iconLiteral="mdi2d-dots-horizontal" iconSize="20"/>
+                        <FontIcon iconLiteral="mdi2m-menu" iconSize="20"/>
                     </graphic>
                     <items>
+                        <MenuItem fx:id="viewGrammarMenuItem" text="View Grammar" onAction="#viewGrammar">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2e-eye-outline" iconSize="20"/>
+                            </graphic>
+                        </MenuItem>
                         <MenuItem text="Download Content" onAction="#downloadContent">
                             <graphic>
                                 <FontIcon iconLiteral="mdi2d-download" iconSize="20"/>
