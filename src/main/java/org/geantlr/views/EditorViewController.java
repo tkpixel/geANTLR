@@ -109,6 +109,19 @@ public class EditorViewController {
         this.tokenHighlightMappingService = tokenHighlightMappingService;
     }
 
+    private boolean hasWavyUnderline(SyntaxError error, String text) {
+        if (error == null || text == null) return false;
+        int start = error.charPositionInLine();
+        int end = start + error.length();
+        if (start >= 0 && end <= text.length() && start < end) {
+            return true;
+        } else if (start >= 0 && start <= text.length()) {
+            int safeEnd = Math.min(start + 1, text.length());
+            return start < safeEnd;
+        }
+        return false;
+    }
+
     @FXML
     public void initialize() {
         if (editorCodeArea != null) {
@@ -140,7 +153,8 @@ public class EditorViewController {
                 }
 
                 SyntaxError error = viewModel.getErrorAt(antlrLine, antlrChar);
-                if (error != null) {
+                String lineText = editorCodeArea.getModel().getPlainText(pos.index());
+                if (error != null && hasWavyUnderline(error, lineText)) {
                     LOG.info("[Hover] MATCH → showing tooltip: " + error.message());
                     errorTooltip.setText(error.message());
                     errorTooltip.show(editorCodeArea, lastScreenX + 2, lastScreenY + 18);
@@ -158,9 +172,16 @@ public class EditorViewController {
 
                 TextPos pos = editorCodeArea.getTextPosition(screenX, screenY);
 
-                SyntaxError errorUnderCursor = (pos != null)
-                    ? viewModel.getErrorAt(pos.index() + 1, pos.offset())
-                    : null;
+                SyntaxError errorUnderCursor = null;
+                if (pos != null) {
+                    SyntaxError err = viewModel.getErrorAt(pos.index() + 1, pos.offset());
+                    if (err != null) {
+                        String lineText = editorCodeArea.getModel().getPlainText(pos.index());
+                        if (hasWavyUnderline(err, lineText)) {
+                            errorUnderCursor = err;
+                        }
+                    }
+                }
 
                 if (!Objects.equals(errorUnderCursor, lastHoveredError)) {
                     errorTooltip.hide();
