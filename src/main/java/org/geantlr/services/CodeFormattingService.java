@@ -8,12 +8,12 @@ import org.antlr.v4.runtime.LexerInterpreter;
 import org.antlr.v4.runtime.ParserInterpreter;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.TokenStreamRewriter;
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.antlr.v4.runtime.tree.ErrorNode;
-import org.antlr.v4.runtime.ParserRuleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +63,6 @@ public class CodeFormattingService {
         private final TokenStreamRewriter rewriter;
         private final CommonTokenStream tokenStream;
         private int indentLevel = 0;
-        private boolean needsIndent = false;
 
         public FormatterListener(TokenStreamRewriter rewriter, CommonTokenStream tokenStream) {
             this.rewriter = rewriter;
@@ -77,62 +76,147 @@ public class CodeFormattingService {
         @Override
         public void visitTerminal(TerminalNode node) {
             Token token = node.getSymbol();
-
-            // Remove previous hidden whitespace tokens (keep comments if they are on a different channel or identifiable, though ANTLR handles this differently per grammar; we'll only delete whitespaces if we can identify them)
-            // For a robust generic formatter, we should look for tokens that consist only of whitespace
-            int tokenIndex = token.getTokenIndex();
-            java.util.List<Token> hiddenTokens = tokenStream.getHiddenTokensToLeft(tokenIndex);
-            if (hiddenTokens != null) {
-                for (Token hidden : hiddenTokens) {
-                    if (hidden.getType() != Token.EOF && hidden.getText() != null && hidden.getText().trim().isEmpty()) {
-                        // Avoid deleting tokens if they were already rewritten/deleted to avoid IllegalStateException
-                        try {
-                            rewriter.delete(hidden);
-                        } catch (IllegalStateException e) {
-                            LOG.trace("Token already deleted or invalid for deletion", e);
-                        }
-                    }
-                }
-            }
-
             String text = token.getText();
             if (text == null) return;
 
+            int tokenIndex = token.getTokenIndex();
+
             if (text.equals("}") || text.equals("]")) {
                 indentLevel--;
-                rewriter.insertBefore(token, "\n" + getIndentString());
-                needsIndent = false;
-            } else if (needsIndent) {
-                rewriter.insertBefore(token, getIndentString());
-                needsIndent = false;
+                // Only fix whitespace before closing bracket if it doesn't already match
+                String expectedPrefix = "\n" + getIndentString();
+                String existingPrefix = getHiddenTextToLeft(tokenIndex);
+                if (!existingPrefix.endsWith(expectedPrefix)) {
+                    replaceHiddenToLeft(tokenIndex, expectedPrefix);
+                }
             }
 
             if (text.equals("{") || text.equals("[")) {
                 indentLevel++;
-                rewriter.insertAfter(token, "\n");
-                needsIndent = true;
-            } else if (text.equals(";") || text.equals(",")) {
-                rewriter.insertAfter(token, "\n");
-                needsIndent = true;
-            } else if (!text.equals("}") && !text.equals("]")) {
-                // Ensure spaces between normal tokens unless followed by punctuation
-                // Find next non-whitespace hidden token, or next visible token
-                Token nextVisibleToken = null;
-                for (int i = tokenIndex + 1; i < tokenStream.size(); i++) {
-                    Token t = tokenStream.get(i);
-                    if (t.getChannel() == Token.DEFAULT_CHANNEL) {
-                        nextVisibleToken = t;
-                        break;
-                    }
+                // Only fix whitespace after opening bracket if it doesn't already have a newline + correct indent
+                String expectedSuffix = "\n" + getIndentString();
+                String existingSuffix = getHiddenTextToRight(tokenIndex);
+                if (!existingSuffix.startsWith(expectedSuffix)) {
+                    replaceHiddenToRight(tokenIndex, expectedSuffix);
                 }
+            } else if (text.equals(";") || text.equals(",")) {
+                // Ensure newline + indent after statement/list separators
+                String expectedSuffix = "\n" + getIndentString();
+                String existingSuffix = getHiddenTextToRight(tokenIndex);
+                if (!existingSuffix.startsWith(expectedSuffix)) {
+                    replaceHiddenToRight(tokenIndex, expectedSuffix);
+                }
+            } else if (!text.equals("}") && !text.equals("]")) {
+                // Ensure single space between normal tokens unless followed by punctuation
+                Token nextVisibleToken = findNextVisibleToken(tokenIndex);
 
                 if (nextVisibleToken != null && nextVisibleToken.getType() != Token.EOF) {
                     String nextText = nextVisibleToken.getText();
                     if (nextText != null && !nextText.equals(";") && !nextText.equals(",") &&
                         !nextText.equals(".") && !nextText.equals(")") &&
                         !nextText.equals("]") && !nextText.equals("}")) {
-                        rewriter.insertAfter(token, " ");
+                        String existingGap = getHiddenTextToRight(tokenIndex);
+                        // Only add a space if there's no whitespace at all between tokens
+                        if (existingGap.isEmpty()) {
+                            try {
+                                rewriter.insertAfter(token, " ");
+                            } catch (IllegalStateException e) {
+                                LOG.trace("Token already modified", e);
+                            }
+                        }
                     }
+                }
+            }
+        }
+
+        private Token findNextVisibleToken(int tokenIndex) {
+            for (int i = tokenIndex + 1; i < tokenStream.size(); i++) {
+                Token t = tokenStream.get(i);
+                if (t.getChannel() == Token.DEFAULT_CHANNEL) {
+                    return t;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Returns the concatenated text of hidden tokens to the left of the given token index.
+         */
+        private String getHiddenTextToLeft(int tokenIndex) {
+            java.util.List<Token> hidden = tokenStream.getHiddenTokensToLeft(tokenIndex);
+            if (hidden == null) return "";
+            StringBuilder sb = new StringBuilder();
+            for (Token h : hidden) {
+                if (h.getText() != null) sb.append(h.getText());
+            }
+            return sb.toString();
+        }
+
+        /**
+         * Returns the concatenated text of hidden tokens to the right of the given token index.
+         */
+        private String getHiddenTextToRight(int tokenIndex) {
+            java.util.List<Token> hidden = tokenStream.getHiddenTokensToRight(tokenIndex);
+            if (hidden == null) return "";
+            StringBuilder sb = new StringBuilder();
+            for (Token h : hidden) {
+                if (h.getText() != null) sb.append(h.getText());
+            }
+            return sb.toString();
+        }
+
+        /**
+         * Replaces all hidden whitespace tokens to the left of the given token index with the expected text.
+         */
+        private void replaceHiddenToLeft(int tokenIndex, String expected) {
+            java.util.List<Token> hidden = tokenStream.getHiddenTokensToLeft(tokenIndex);
+            if (hidden == null || hidden.isEmpty()) {
+                try {
+                    rewriter.insertBefore(tokenStream.get(tokenIndex), expected);
+                } catch (IllegalStateException e) {
+                    LOG.trace("Token already modified", e);
+                }
+                return;
+            }
+            boolean first = true;
+            for (Token h : hidden) {
+                try {
+                    if (first) {
+                        rewriter.replace(h, expected);
+                        first = false;
+                    } else {
+                        rewriter.delete(h);
+                    }
+                } catch (IllegalStateException e) {
+                    LOG.trace("Token already modified", e);
+                }
+            }
+        }
+
+        /**
+         * Replaces all hidden whitespace tokens to the right of the given token index with the expected text.
+         */
+        private void replaceHiddenToRight(int tokenIndex, String expected) {
+            java.util.List<Token> hidden = tokenStream.getHiddenTokensToRight(tokenIndex);
+            if (hidden == null || hidden.isEmpty()) {
+                try {
+                    rewriter.insertAfter(tokenStream.get(tokenIndex), expected);
+                } catch (IllegalStateException e) {
+                    LOG.trace("Token already modified", e);
+                }
+                return;
+            }
+            boolean first = true;
+            for (Token h : hidden) {
+                try {
+                    if (first) {
+                        rewriter.replace(h, expected);
+                        first = false;
+                    } else {
+                        rewriter.delete(h);
+                    }
+                } catch (IllegalStateException e) {
+                    LOG.trace("Token already modified", e);
                 }
             }
         }
