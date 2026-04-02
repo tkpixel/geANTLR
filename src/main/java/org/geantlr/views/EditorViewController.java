@@ -551,24 +551,30 @@ public class EditorViewController {
         int targetPara = pos.index();
         int charIdx = pos.offset();
 
-        // Find all TextFlow elements inside editorCodeArea
-        for (javafx.scene.Node node : editorCodeArea.lookupAll("TextFlow")) {
-            if (node instanceof javafx.scene.text.TextFlow textFlow) {
-                // Determine if this TextFlow belongs to targetPara.
-                String modelText = editorCodeArea.getModel().getPlainText(targetPara);
+        // Iterate over .content children to find the TextCell representing the target paragraph index.
+        // The TextCell class is com.sun.jfx.incubator.scene.control.richtext.TextCell which extends BorderPane
+        // and contains a getIndex() method returning the paragraph index.
+        for (javafx.scene.Node cell : editorCodeArea.lookupAll(".content > *")) {
+            try {
+                // Use reflection to check if this cell's getIndex() matches our target paragraph
+                java.lang.reflect.Method getIndexMethod = cell.getClass().getMethod("getIndex");
+                Object indexVal = getIndexMethod.invoke(cell);
 
-                // Construct the text from this TextFlow
-                StringBuilder flowText = new StringBuilder();
-                for (javafx.scene.Node child : textFlow.getChildren()) {
-                    if (child instanceof javafx.scene.text.Text textNode) {
-                        flowText.append(textNode.getText());
+                if (indexVal instanceof Integer && ((Integer) indexVal) == targetPara) {
+                    // This is the exact TextCell for our paragraph. Now find its TextFlow.
+                    javafx.scene.text.TextFlow textFlow = null;
+                    if (cell instanceof javafx.scene.Parent parentCell) {
+                        for (javafx.scene.Node child : parentCell.getChildrenUnmodifiable()) {
+                            if (child instanceof javafx.scene.text.TextFlow flow) {
+                                textFlow = flow;
+                                break;
+                            }
+                        }
                     }
-                }
 
-                if (flowText.toString().equals(modelText)) {
-                    javafx.scene.text.LayoutInfo layoutInfo = textFlow.getLayoutInfo();
-                    if (layoutInfo != null && charIdx <= flowText.length()) {
-                        try {
+                    if (textFlow != null) {
+                        javafx.scene.text.LayoutInfo layoutInfo = textFlow.getLayoutInfo();
+                        if (layoutInfo != null) {
                             javafx.scene.text.CaretInfo caretInfo = layoutInfo.caretInfoAt(charIdx, true);
                             if (caretInfo != null && caretInfo.getSegmentCount() > 0) {
                                 javafx.geometry.Rectangle2D localCaret = caretInfo.getSegmentAt(0);
@@ -578,11 +584,13 @@ public class EditorViewController {
 
                                 return new javafx.geometry.Rectangle2D(overlayBounds.getMinX(), overlayBounds.getMinY(), overlayBounds.getWidth(), overlayBounds.getHeight());
                             }
-                        } catch (Exception e) {
-                            // index out of bounds or unsupported
                         }
                     }
+                    // Since we found the exact cell, we can break early whether we found layout info or not.
+                    break;
                 }
+            } catch (Exception e) {
+                // Ignore nodes that do not have getIndex()
             }
         }
 
