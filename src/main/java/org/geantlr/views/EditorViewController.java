@@ -502,18 +502,39 @@ public class EditorViewController {
         // Must run in runLater because TextFlow nodes might be recreating right now
         javafx.application.Platform.runLater(() -> {
             try {
+                // Find the first non-whitespace character on the line of the opening brace
+                String openLineText = editorCodeArea.getModel().getPlainText(openPos.index());
+                int firstNonWsIdx = 0;
+                while (firstNonWsIdx < openLineText.length() && Character.isWhitespace(openLineText.charAt(firstNonWsIdx))) {
+                    firstNonWsIdx++;
+                }
+
+                // If line is empty or purely whitespace, fallback to the brace itself
+                if (firstNonWsIdx >= openLineText.length()) {
+                    firstNonWsIdx = openPos.offset();
+                }
+
+                TextPos indentPos = TextPos.ofLeading(openPos.index(), firstNonWsIdx);
+
+                javafx.geometry.Rectangle2D indentCaret = getCaretBounds(indentPos);
                 javafx.geometry.Rectangle2D openCaret = getCaretBounds(openPos);
                 javafx.geometry.Rectangle2D closeCaret = getCaretBounds(closePos);
 
-                if (openCaret != null && closeCaret != null) {
-                    // IntelliJ-style: vertical line aligning with the closing brace's X coordinate
+                if (indentCaret != null && openCaret != null && closeCaret != null) {
+                    // IntelliJ-style: vertical line aligning with the block keyword (first non-whitespace character)
                     // that extends from the bottom of the opening brace line to the top of the closing brace line.
-                    double verticalX = closeCaret.getMinX();
-                    connectionLine.setStartX(verticalX);
-                    connectionLine.setStartY(openCaret.getMaxY());
-                    connectionLine.setEndX(verticalX);
-                    connectionLine.setEndY(closeCaret.getMinY());
-                    connectionLine.setVisible(true);
+                    double verticalX = indentCaret.getMinX();
+
+                    // Prevent the line from drawing backwards if the closing brace is somehow higher up
+                    if (closeCaret.getMinY() > openCaret.getMaxY()) {
+                        connectionLine.setStartX(verticalX);
+                        connectionLine.setStartY(openCaret.getMaxY());
+                        connectionLine.setEndX(verticalX);
+                        connectionLine.setEndY(closeCaret.getMinY());
+                        connectionLine.setVisible(true);
+                    } else {
+                        connectionLine.setVisible(false);
+                    }
                 } else {
                     connectionLine.setVisible(false);
                 }
