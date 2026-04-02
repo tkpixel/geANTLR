@@ -27,8 +27,8 @@ import org.geantlr.FxmlControllerFactory;
 import org.geantlr.viewmodels.EditorViewModel;
 import org.geantlr.viewmodels.MainViewModel;
 import org.geantlr.services.IGrammarLoaderService;
-import org.geantlr.services.DynamicGrammar;
 import org.geantlr.services.TokenHighlightMappingService;
+import org.geantlr.services.DynamicGrammar;
 import org.kordamp.ikonli.javafx.FontIcon;
 import javafx.stage.FileChooser;
 import javafx.stage.DirectoryChooser;
@@ -395,10 +395,13 @@ public class MainViewController {
                 File importDir = controller.getImportDir();
                 File parserFile = controller.getParserFile();
 
-                Task<DynamicGrammar> loadTask = viewModel.loadGrammarAsync(importDir, parserFile, tokenHighlightMappingService);
+                Task<DynamicGrammar> loadTask = viewModel.loadGrammarAsync(importDir, parserFile);
 
                 loadTask.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_SUCCEEDED, e -> {
                     DynamicGrammar dynamicGrammar = loadTask.getValue();
+                    if (dynamicGrammar != null) {
+                        tokenHighlightMappingService.buildVocabularyMapping(dynamicGrammar.getVocabulary());
+                    }
                     String rulesMsg = dynamicGrammar.getParserGrammar() != null
                         ? "Parser rules: " + dynamicGrammar.getParserGrammar().rules.size()
                         : "Lexer rules only";

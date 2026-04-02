@@ -103,18 +103,14 @@ public class MainViewModel {
         return isLoadingGrammar.get();
     }
 
-    public Task<DynamicGrammar> loadGrammarAsync(File importDir, File parserFile, TokenHighlightMappingService tokenHighlightMappingService) {
+    public Task<DynamicGrammar> loadGrammarAsync(File importDir, File parserFile) {
         Task<DynamicGrammar> task = new Task<>() {
             @Override
             protected DynamicGrammar call() throws Exception {
                 if (importDir != null) {
                     grammarLoaderService.addImportDirectory(importDir);
                 }
-                DynamicGrammar grammar = grammarLoaderService.loadDynamicGrammar(importDir, parserFile);
-                if (grammar != null) {
-                    tokenHighlightMappingService.buildVocabularyMapping(grammar.getVocabulary());
-                }
-                return grammar;
+                return grammarLoaderService.loadDynamicGrammar(importDir, parserFile);
             }
         };
 
