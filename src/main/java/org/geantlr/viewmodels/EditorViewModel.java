@@ -65,6 +65,8 @@ public class EditorViewModel {
     private final ObservableList<String> availableOllamaModels = FXCollections.observableArrayList();
     private final ObjectProperty<String> selectedOllamaModel = new SimpleObjectProperty<>();
 
+    private final BooleanProperty isTyping = new SimpleBooleanProperty(false);
+
     private boolean isUpdating = false;
     private int currentCaretPosition = 0;
 
@@ -93,19 +95,24 @@ public class EditorViewModel {
         this.ruleGenerationService = ruleGenerationService;
         this.plantUmlParsingService = plantUmlParsingService;
 
-        debounce.setOnFinished(event -> parseText(textContent.get()));
+        debounce.setOnFinished(_ -> {
+            parseText(textContent.get());
+            isTyping.set(false);
+            updateSuggestions();
+        });
 
-        textContent.addListener((obs, oldVal, newVal) -> {
+        textContent.addListener((_, _, _) -> {
+            isTyping.set(true);
             debounce.playFromStart();
             searchDebounce.playFromStart();
         });
 
-        searchDebounce.setOnFinished(event -> executeSearch());
+        searchDebounce.setOnFinished(_ -> executeSearch());
 
-        searchText.addListener((obs, oldVal, newVal) -> searchDebounce.playFromStart());
-        searchMatchCase.addListener((obs, oldVal, newVal) -> searchDebounce.playFromStart());
-        searchWholeWord.addListener((obs, oldVal, newVal) -> searchDebounce.playFromStart());
-        searchRegex.addListener((obs, oldVal, newVal) -> searchDebounce.playFromStart());
+        searchText.addListener((_, _, _) -> searchDebounce.playFromStart());
+        searchMatchCase.addListener((_, _, _) -> searchDebounce.playFromStart());
+        searchWholeWord.addListener((_, _, _) -> searchDebounce.playFromStart());
+        searchRegex.addListener((_, _, _) -> searchDebounce.playFromStart());
 
         loadAvailableOllamaModels();
     }
@@ -360,6 +367,10 @@ public class EditorViewModel {
         return isGenerating;
     }
 
+    public BooleanProperty isTypingProperty() {
+        return isTyping;
+    }
+
     public boolean isGenerating() {
         return isGenerating.get();
     }
@@ -399,6 +410,7 @@ public class EditorViewModel {
                 : token;
         setUpdating(true);
         insertTextCommand.set(new InsertTextCommand(cleanToken));
+        // Suggestions will be refreshed via the text change → debounce → updateSuggestions chain
     }
 
     public void clearInsertTextCommand() {
@@ -540,9 +552,6 @@ public class EditorViewModel {
             .thenAccept(suggestions -> Platform.runLater(() -> suggestedTokens.setAll(suggestions)));
     }
 
-    public StringProperty referenceTemplateProperty() {
-        return referenceTemplate;
-    }
 
     public StringProperty referenceTemplateNameProperty() {
         return referenceTemplateName;
@@ -573,7 +582,7 @@ public class EditorViewModel {
             }
         };
 
-        generationTask.setOnSucceeded(event -> {
+        generationTask.setOnSucceeded(_ -> {
             isGenerating.set(false);
             String result = generationTask.getValue();
             if (result != null && !result.isEmpty()) {
@@ -582,7 +591,7 @@ public class EditorViewModel {
             }
         });
 
-        generationTask.setOnFailed(event -> {
+        generationTask.setOnFailed(_ -> {
             isGenerating.set(false);
             Throwable e = generationTask.getException();
             if (e != null) {
@@ -605,12 +614,12 @@ public class EditorViewModel {
             }
         };
 
-        parseTask.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_RUNNING, e -> isParsingDomainModel.set(true));
-        parseTask.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_SUCCEEDED, e -> {
+        parseTask.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_RUNNING, _ -> isParsingDomainModel.set(true));
+        parseTask.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_SUCCEEDED, _ -> {
             isParsingDomainModel.set(false);
             updateSuggestions();
         });
-        parseTask.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_FAILED, e -> {
+        parseTask.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_FAILED, _ -> {
             isParsingDomainModel.set(false);
             Throwable ex = parseTask.getException();
             LOG.severe("Failed to load domain model: " + (ex != null ? ex.getMessage() : "Unknown error"));
@@ -624,9 +633,6 @@ public class EditorViewModel {
         return isParsingDomainModel;
     }
 
-    public boolean isParsingDomainModel() {
-        return isParsingDomainModel.get();
-    }
 
     public void loadTemplateAsync(java.io.File file) {
         if (file == null || !file.exists()) return;
@@ -638,13 +644,13 @@ public class EditorViewModel {
             }
         };
 
-        loadTask.setOnSucceeded(e -> {
+        loadTask.setOnSucceeded(_ -> {
             String content = loadTask.getValue();
             referenceTemplate.set(content);
             referenceTemplateName.set("Template: " + file.getName());
         });
 
-        loadTask.setOnFailed(e -> {
+        loadTask.setOnFailed(_ -> {
             Throwable ex = loadTask.getException();
             LOG.severe("Failed to read template file: " + (ex != null ? ex.getMessage() : "Unknown error"));
         });

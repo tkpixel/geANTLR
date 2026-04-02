@@ -94,14 +94,13 @@ public class EditorViewController {
     private Button searchCloseButton;
 
     private final javafx.scene.control.Tooltip errorTooltip = new javafx.scene.control.Tooltip();
-    private final PauseTransition hoverPause = new PauseTransition(Duration.millis(300));
+    private final PauseTransition hoverPause = new PauseTransition(Duration.millis(800));
     private SyntaxError lastHoveredError = null;
     // Screen coordinates stored on mouse-move, used when the pause fires
     private double lastScreenX, lastScreenY;
 
     private EditorViewModel viewModel;
     private final TokenHighlightMappingService tokenHighlightMappingService;
-    private javafx.scene.shape.Line connectionLine;
     private javafx.scene.canvas.Canvas bracketCanvas;
 
     @Inject
@@ -122,30 +121,27 @@ public class EditorViewController {
             // Fired after the hover delay – show the tooltip if still over an error
             hoverPause.setOnFinished(_ -> {
                 if (viewModel == null || editorCodeArea.getScene() == null) return;
+                if (viewModel.isTypingProperty().get()) return;
 
                 TextPos pos = editorCodeArea.getTextPosition(lastScreenX, lastScreenY);
                 if (pos == null) {
-                    LOG.warning("[Hover] getTextPosition returned null for screen=(" + lastScreenX + "," + lastScreenY + ")");
+                    LOG.fine("[Hover] getTextPosition returned null for screen=(" + lastScreenX + "," + lastScreenY + ")");
                     return;
                 }
 
                 int antlrLine = pos.index() + 1;
                 int antlrChar = pos.offset();
-                LOG.info("[Hover] TextPos index=" + pos.index() + " offset=" + pos.offset()
+                LOG.fine("[Hover] TextPos index=" + pos.index() + " offset=" + pos.offset()
                     + " → ANTLR line=" + antlrLine + " char=" + antlrChar
                     + "  errors=" + viewModel.getErrors().size());
-                for (SyntaxError err : viewModel.getErrors()) {
-                    LOG.info("[Hover]   error: line=" + err.line() + " charPos=" + err.charPositionInLine()
-                        + " len=" + err.length() + " msg=" + err.message());
-                }
 
                 SyntaxError error = viewModel.getErrorAt(antlrLine, antlrChar);
                 if (error != null) {
-                    LOG.info("[Hover] MATCH → showing tooltip: " + error.message());
+                    LOG.fine("[Hover] MATCH → showing tooltip: " + error.message());
                     errorTooltip.setText(error.message());
                     errorTooltip.show(editorCodeArea, lastScreenX + 2, lastScreenY + 18);
                 } else {
-                    LOG.info("[Hover] no match at line=" + antlrLine + " char=" + antlrChar);
+                    LOG.fine("[Hover] no match at line=" + antlrLine + " char=" + antlrChar);
                 }
             });
 
@@ -216,9 +212,7 @@ public class EditorViewController {
         }
 
         if (searchCloseButton != null) {
-            searchCloseButton.setOnAction(_ -> {
-                closeSearch();
-            });
+            searchCloseButton.setOnAction(_ -> closeSearch());
         }
 
         if (searchTextField != null) {
@@ -306,9 +300,8 @@ public class EditorViewController {
             }
 
             if (searchCountLabel != null) {
-                viewModel.searchCountTextProperty().addListener((_, _, newVal) -> {
-                    searchCountLabel.setText(newVal != null ? newVal : "No results");
-                });
+                viewModel.searchCountTextProperty().addListener((_, _, newVal) ->
+                    searchCountLabel.setText(newVal != null ? newVal : "No results"));
             }
 
             generateButton.setOnAction(_ -> {
@@ -385,7 +378,7 @@ public class EditorViewController {
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
             });
 
-            this.viewModel.matchedBracketsProperty().addListener((_, _, newVal) -> {
+            this.viewModel.matchedBracketsProperty().addListener((_, _, _) -> {
                 editorCodeArea.setSyntaxDecorator(null);
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
             });
@@ -449,9 +442,6 @@ public class EditorViewController {
                 bracketCanvas.heightProperty().bind(bracketLineOverlay.heightProperty());
                 bracketLineOverlay.getChildren().add(bracketCanvas);
 
-                // Keep the old connectionLine for compatibility but we won't use it visually
-                connectionLine = new javafx.scene.shape.Line();
-                connectionLine.setVisible(false);
 
                 // Redraw whenever layout changes or the bracket record changes
                 bracketLineOverlay.widthProperty().addListener((_, _, _) -> updateBracketLine());
@@ -517,7 +507,7 @@ public class EditorViewController {
             javafx.geometry.Point2D openPt    = getCharTopLeft(openPos);
             javafx.geometry.Point2D closePt   = getCharTopLeft(closePos);
 
-            LOG.info("[BracketLine] indentPt=" + indentPt + " openPt=" + openPt + " closePt=" + closePt
+            LOG.fine("[BracketLine] indentPt=" + indentPt + " openPt=" + openPt + " closePt=" + closePt
                     + "  canvas=" + bracketCanvas.getWidth() + "x" + bracketCanvas.getHeight());
 
             double overlayHeight = bracketCanvas.getHeight();
@@ -534,13 +524,13 @@ public class EditorViewController {
             }
 
             if (verticalX == null) {
-                LOG.info("[BracketLine] verticalX could not be determined (all three positions outside viewport) – skipping draw");
+                LOG.fine("[BracketLine] verticalX could not be determined (all three positions outside viewport) – skipping draw");
                 return;
             }
 
             // Y-start: bottom of the opening-brace row.
             // If the opening brace is scrolled above the viewport, clamp to the top edge.
-            double lineHeight = estimateLineHeight(openPos);
+            double lineHeight = estimateLineHeight();
             double startY = (openPt != null) ? openPt.getY() + lineHeight : 0.0;
 
             // Y-end: top of the closing-brace row.
@@ -548,7 +538,7 @@ public class EditorViewController {
             double endY = (closePt != null) ? closePt.getY() : overlayHeight;
 
             if (endY <= startY) {
-                LOG.info("[BracketLine] endY(" + endY + ") <= startY(" + startY + ") – skipping draw");
+                LOG.fine("[BracketLine] endY(" + endY + ") <= startY(" + startY + ") – skipping draw");
                 return;
             }
 
@@ -560,7 +550,7 @@ public class EditorViewController {
             double x = Math.floor(verticalX) + 0.5;
             gc.strokeLine(x, startY, x, endY);
 
-            LOG.info("[BracketLine] drew line x=" + x + " y=" + startY + "→" + endY);
+            LOG.fine("[BracketLine] drew line x=" + x + " y=" + startY + "→" + endY);
 
         } catch (Exception e) {
             LOG.warning("[BracketLine] Exception during draw: " + e.getMessage());
@@ -614,7 +604,7 @@ public class EditorViewController {
             }
         }
 
-        LOG.info("[BracketLine] caretParaIndex=" + caretParaIndex
+        LOG.fine("[BracketLine] caretParaIndex=" + caretParaIndex
                 + " caretFlowIndex=" + caretFlowIndex
                 + " targetPara=" + targetPara
                 + " flows=" + flows.size());
@@ -688,8 +678,8 @@ public class EditorViewController {
         return null;
     }
 
-    /** Estimates the line height by measuring the TextFlow for {@code pos}; falls back to a heuristic. */
-    private double estimateLineHeight(TextPos pos) {
+    /** Estimates the line height by measuring the first visible TextFlow; falls back to a heuristic. */
+    private double estimateLineHeight() {
         for (javafx.scene.Node cell : editorCodeArea.lookupAll(".content > *")) {
             javafx.scene.text.TextFlow tf = findTextFlow(cell);
             if (tf != null) {
@@ -831,10 +821,6 @@ public class EditorViewController {
         };
     }
 
-    public EditorViewModel getViewModel() {
-        return viewModel;
-    }
-
     private void updateEditorStyle(int size) {
         editorCodeArea.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: " + size + "pt;");
     }
@@ -861,10 +847,6 @@ public class EditorViewController {
         }
     }
 
-    /**
-     * Converts a TextPos (paragraph + intra-paragraph offset) to an absolute
-     * character offset in the full text, counting each paragraph separator as one '\n'.
-     */
     /**
      * Converts an absolute character offset to a TextPos (paragraph + intra-paragraph offset).
      */
