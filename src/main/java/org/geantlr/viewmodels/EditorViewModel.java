@@ -55,7 +55,7 @@ public class EditorViewModel {
     private final StringProperty searchCountText = new SimpleStringProperty("No results");
     private final IntegerProperty currentMatchIndex = new SimpleIntegerProperty(-1);
 
-    public record MatchedBracketsRecord(int openIndex, int closeIndex) {}
+    public record MatchedBracketsRecord(int openIndex, int closeIndex, char bracketChar) {}
     private final ObjectProperty<MatchedBracketsRecord> matchedBrackets = new SimpleObjectProperty<>(null);
 
     public record SearchMatch(int start, int end) {}
@@ -454,7 +454,8 @@ public class EditorViewModel {
             // Keep smaller index as openIndex, larger as closeIndex
             int openIdx = Math.min(charIdx, matchIdx);
             int closeIdx = Math.max(charIdx, matchIdx);
-            matchedBrackets.set(new MatchedBracketsRecord(openIdx, closeIdx));
+            char actualBracketChar = text.charAt(openIdx);
+            matchedBrackets.set(new MatchedBracketsRecord(openIdx, closeIdx, actualBracketChar));
         } else {
             matchedBrackets.set(null);
         }

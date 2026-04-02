@@ -493,6 +493,12 @@ public class EditorViewController {
             return;
         }
 
+        // Only draw connection line for curly braces `{}` as requested for IntelliJ-style
+        if (matchedBrackets.bracketChar() != '{') {
+            connectionLine.setVisible(false);
+            return;
+        }
+
         // Must run in runLater because TextFlow nodes might be recreating right now
         javafx.application.Platform.runLater(() -> {
             try {
@@ -500,9 +506,12 @@ public class EditorViewController {
                 javafx.geometry.Rectangle2D closeCaret = getCaretBounds(closePos);
 
                 if (openCaret != null && closeCaret != null) {
-                    connectionLine.setStartX(openCaret.getMinX());
+                    // IntelliJ-style: vertical line aligning with the closing brace's X coordinate
+                    // that extends from the bottom of the opening brace line to the top of the closing brace line.
+                    double verticalX = closeCaret.getMinX();
+                    connectionLine.setStartX(verticalX);
                     connectionLine.setStartY(openCaret.getMaxY());
-                    connectionLine.setEndX(closeCaret.getMinX());
+                    connectionLine.setEndX(verticalX);
                     connectionLine.setEndY(closeCaret.getMinY());
                     connectionLine.setVisible(true);
                 } else {
