@@ -469,8 +469,8 @@ public class EditorViewModel {
         Thread.ofVirtual().start(generationTask);
     }
 
-    public void loadDomainModel(java.io.File file) {
-        if (file == null || !file.exists()) return;
+    public javafx.concurrent.Task<Void> loadDomainModel(java.io.File file) {
+        if (file == null || !file.exists()) return null;
 
         javafx.concurrent.Task<Void> parseTask = new javafx.concurrent.Task<>() {
             @Override
@@ -481,18 +481,19 @@ public class EditorViewModel {
             }
         };
 
-        parseTask.setOnRunning(e -> isParsingDomainModel.set(true));
-        parseTask.setOnSucceeded(e -> {
+        parseTask.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_RUNNING, e -> isParsingDomainModel.set(true));
+        parseTask.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_SUCCEEDED, e -> {
             isParsingDomainModel.set(false);
             updateSuggestions();
         });
-        parseTask.setOnFailed(e -> {
+        parseTask.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_FAILED, e -> {
             isParsingDomainModel.set(false);
             Throwable ex = parseTask.getException();
             LOG.severe("Failed to load domain model: " + (ex != null ? ex.getMessage() : "Unknown error"));
         });
 
         Thread.ofVirtual().start(parseTask);
+        return parseTask;
     }
 
     public BooleanProperty isParsingDomainModelProperty() {

@@ -38,6 +38,7 @@ import javafx.concurrent.Task;
 import javafx.scene.control.ChoiceDialog;
 import java.nio.file.Files;
 import java.util.Optional;
+import javafx.application.Platform;
 
 @Singleton
 public class MainViewController {
@@ -229,8 +230,20 @@ public class MainViewController {
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PlantUML Files", "*.puml", "*.txt"));
         File selectedFile = fileChooser.showOpenDialog(loadDomainModelButton.getScene().getWindow());
         if (selectedFile != null) {
+            boolean dialogAttached = false;
             for (EditorViewModel editor : viewModel.getActiveEditors()) {
-                editor.loadDomainModel(selectedFile);
+                Task<Void> parseTask = editor.loadDomainModel(selectedFile);
+                if (parseTask != null && !dialogAttached) {
+                    // Attach to only the first task to avoid multiple dialogs for the same file load
+                    parseTask.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_SUCCEEDED, e -> {
+                        Platform.runLater(() -> showMessageDialog("Domain Model Loaded", "Success", "PlantUML domain model loaded successfully."));
+                    });
+                    parseTask.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_FAILED, e -> {
+                        Throwable ex = parseTask.getException();
+                        Platform.runLater(() -> showMessageDialog("Error Loading Domain Model", "Failed to load PlantUML file", ex != null ? ex.getMessage() : "Unknown error"));
+                    });
+                    dialogAttached = true;
+                }
             }
         }
     }
@@ -264,6 +277,52 @@ public class MainViewController {
         mainProgressBar.managedProperty().bind(anyParsing);
     }
 
+    private void showMessageDialog(String title, String header, String content) {
+        if (!Platform.isFxApplicationThread()) {
+            Platform.runLater(() -> showMessageDialog(title, header, content));
+            return;
+        }
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/geantlr/views/MessageDialog.fxml"));
+            loader.setControllerFactory(context.getBean(FxmlControllerFactory.class));
+            javafx.scene.Parent root = loader.load();
+            MessageDialogController controller = loader.getController();
+
+            controller.setDialogInfo(title, header, content);
+
+            Stage stage = new Stage();
+            stage.setTitle(title);
+            stage.initStyle(javafx.stage.StageStyle.DECORATED);
+            stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            if (editorSplitPane != null && editorSplitPane.getScene() != null) {
+                stage.initOwner(editorSplitPane.getScene().getWindow());
+            }
+
+            javafx.scene.Scene dialogScene = new javafx.scene.Scene(root, 400, 250);
+
+            // Apply current stylesheets
+            javafx.scene.Scene mainScene = editorSplitPane.getScene();
+            if (mainScene != null) {
+                dialogScene.getStylesheets().setAll(mainScene.getStylesheets());
+                mainScene.getStylesheets().addListener(
+                    (javafx.collections.ListChangeListener<String>) _ ->
+                        dialogScene.getStylesheets().setAll(mainScene.getStylesheets())
+                );
+            }
+
+            stage.setScene(dialogScene);
+            stage.showAndWait();
+        } catch (IOException e) {
+            e.printStackTrace();
+            // Fallback to standard alert if custom dialog fails
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle(title);
+            alert.setHeaderText(header);
+            alert.setContentText(content);
+            alert.showAndWait();
+        }
+    }
+
     @FXML
     private void viewGrammar() {
         if (viewModel.getDynamicGrammar() == null) {
@@ -280,7 +339,7 @@ public class MainViewController {
 
             Stage stage = new Stage();
             stage.setTitle("Current Grammar");
-            stage.initStyle(javafx.stage.StageStyle.EXTENDED);
+            stage.initStyle(javafx.stage.StageStyle.DECORATED);
             javafx.scene.Scene grammarScene = new javafx.scene.Scene(root, 600, 800);
 
             // Stylesheets der Haupt-Scene übernehmen (inkl. theme-light.css wenn aktiv)
@@ -301,12 +360,8 @@ public class MainViewController {
             stage.setScene(grammarScene);
             stage.show();
         } catch (IOException e) {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Error Displaying Grammar");
-            alert.setHeaderText("Failed to load grammar view");
-            alert.setContentText(e.getMessage());
             e.printStackTrace();
-            alert.showAndWait();
+            showMessageDialog("Error Displaying Grammar", "Failed to load grammar view", e.getMessage());
         }
     }
 
@@ -344,35 +399,22 @@ public class MainViewController {
 
                 loadTask.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_SUCCEEDED, e -> {
                     DynamicGrammar dynamicGrammar = loadTask.getValue();
-                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                    alert.setTitle("Grammar Loaded");
-                    alert.setHeaderText("Success");
                     String rulesMsg = dynamicGrammar.getParserGrammar() != null
                         ? "Parser rules: " + dynamicGrammar.getParserGrammar().rules.size()
                         : "Lexer rules only";
-
-                    alert.setContentText("Grammar '" + parserFile.getName() + "' loaded and compiled successfully.\n" +
-                                         rulesMsg);
-                    alert.showAndWait();
+                    String content = "Grammar '" + parserFile.getName() + "' loaded and compiled successfully.\n" + rulesMsg;
+                    Platform.runLater(() -> showMessageDialog("Grammar Loaded", "Success", content));
                 });
 
                 loadTask.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_FAILED, e -> {
                     Throwable ex = loadTask.getException();
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Error Loading Grammar");
-                    alert.setHeaderText("Failed to load or compile grammar");
-                    alert.setContentText(ex != null ? ex.getMessage() : "Unknown error");
                     if (ex != null) ex.printStackTrace();
-                    alert.showAndWait();
+                    Platform.runLater(() -> showMessageDialog("Error Loading Grammar", "Failed to load or compile grammar", ex != null ? ex.getMessage() : "Unknown error"));
                 });
             }
         } catch (Exception e) {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Error Loading Grammar");
-            alert.setHeaderText("Failed to load or compile grammar");
-            alert.setContentText(e.getMessage());
             e.printStackTrace();
-            alert.showAndWait();
+            Platform.runLater(() -> showMessageDialog("Error Loading Grammar", "Failed to load or compile grammar", e.getMessage()));
         }
     }
 
