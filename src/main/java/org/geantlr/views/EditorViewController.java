@@ -552,55 +552,89 @@ public class EditorViewController {
         int targetPara = pos.index();
         int charIdx = pos.offset();
 
-        // Iterate over .content children to find the TextCell representing the target paragraph index.
-        // The TextCell class is com.sun.jfx.incubator.scene.control.richtext.TextCell which extends BorderPane
-        // and contains a getIndex() method returning the paragraph index.
+        // Collect all visible TextFlows in order of visual appearance (top to bottom)
+        java.util.List<javafx.scene.text.TextFlow> flows = new java.util.ArrayList<>();
         for (javafx.scene.Node cell : editorCodeArea.lookupAll(".content > *")) {
-            boolean isMatch = false;
-            try {
-                // Use reflection to check if this cell's getIndex() matches our target paragraph
-                java.lang.reflect.Method getIndexMethod = cell.getClass().getMethod("getIndex");
-                Object indexVal = getIndexMethod.invoke(cell);
-
-                if (indexVal instanceof Integer && ((Integer) indexVal) == targetPara) {
-                    isMatch = true;
+            if (cell instanceof javafx.scene.Parent parentCell) {
+                for (javafx.scene.Node child : parentCell.getChildrenUnmodifiable()) {
+                    if (child instanceof javafx.scene.text.TextFlow flow) {
+                        flows.add(flow);
+                        break;
+                    }
                 }
-            } catch (Exception e) {
-                // Ignore nodes that do not have getIndex()
             }
+        }
 
-            if (isMatch) {
-                // This is the exact TextCell for our paragraph. Now find its TextFlow.
-                javafx.scene.text.TextFlow textFlow = null;
-                if (cell instanceof javafx.scene.Parent parentCell) {
-                    for (javafx.scene.Node child : parentCell.getChildrenUnmodifiable()) {
-                        if (child instanceof javafx.scene.text.TextFlow flow) {
-                            textFlow = flow;
-                            break;
-                        }
-                    }
+        if (flows.isEmpty()) return null;
+
+        // Sort visible text flows by their absolute Y position
+        flows.sort(java.util.Comparator.comparingDouble(f -> {
+            try {
+                return f.localToScene(f.getBoundsInLocal()).getMinY();
+            } catch(Exception e) {
+                return 0.0;
+            }
+        }));
+
+        // Read out the text strings of visible text flows
+        java.util.List<String> visibleTexts = new java.util.ArrayList<>();
+        for (javafx.scene.text.TextFlow f : flows) {
+            StringBuilder sb = new StringBuilder();
+            for (javafx.scene.Node n : f.getChildren()) {
+                if (n instanceof javafx.scene.text.Text t) sb.append(t.getText());
+            }
+            visibleTexts.add(sb.toString());
+        }
+
+        // Build the complete model paragraph strings to find the matching viewport
+        int paragraphCount = editorCodeArea.getModel().size();
+        java.util.List<String> modelTexts = new java.util.ArrayList<>();
+        for (int i = 0; i < paragraphCount; i++) {
+            modelTexts.add(editorCodeArea.getModel().getPlainText(i));
+        }
+
+        // Use Collections to find the exact contiguous matching sublist index
+        int viewportStartIndex = java.util.Collections.indexOfSubList(modelTexts, visibleTexts);
+
+        // Edge case: if there are multiple identical entire viewports, use the caret position to disambiguate.
+        // E.g., if the user clicked the bracket, the caret is at `caretPara`, which MUST be in the correct viewport.
+        TextPos caretPos = editorCodeArea.getCaretPosition();
+        if (caretPos != null) {
+            int caretPara = caretPos.index();
+            // If the initially found viewport does not contain the caret, search for one that does.
+            int searchIdx = 0;
+            while (viewportStartIndex != -1) {
+                if (caretPara >= viewportStartIndex && caretPara < viewportStartIndex + visibleTexts.size()) {
+                    break; // Found the viewport containing the caret
                 }
+                searchIdx = viewportStartIndex + 1;
+                if (searchIdx >= modelTexts.size()) break;
+                int nextMatch = java.util.Collections.indexOfSubList(modelTexts.subList(searchIdx, modelTexts.size()), visibleTexts);
+                if (nextMatch == -1) break;
+                viewportStartIndex = searchIdx + nextMatch;
+            }
+        }
 
-                if (textFlow != null) {
-                    javafx.scene.text.LayoutInfo layoutInfo = textFlow.getLayoutInfo();
-                    if (layoutInfo != null) {
-                        try {
-                            javafx.scene.text.CaretInfo caretInfo = layoutInfo.caretInfoAt(charIdx, true);
-                            if (caretInfo != null && caretInfo.getSegmentCount() > 0) {
-                                javafx.geometry.Rectangle2D localCaret = caretInfo.getSegmentAt(0);
-                                // Transform local coordinates of the TextFlow to bracketLineOverlay coordinates
-                                javafx.geometry.Bounds localBounds = new javafx.geometry.BoundingBox(localCaret.getMinX(), localCaret.getMinY(), localCaret.getWidth(), localCaret.getHeight());
-                                javafx.geometry.Bounds overlayBounds = bracketLineOverlay.sceneToLocal(textFlow.localToScene(localBounds));
+        if (viewportStartIndex == -1) return null; // No match found
 
-                                return new javafx.geometry.Rectangle2D(overlayBounds.getMinX(), overlayBounds.getMinY(), overlayBounds.getWidth(), overlayBounds.getHeight());
-                            }
-                        } catch (Exception ex) {
-                            LOG.warning("caretInfoAt/localToScene threw an exception: " + ex.getMessage());
-                        }
+        int matchVisualIndex = targetPara - viewportStartIndex;
+        if (matchVisualIndex >= 0 && matchVisualIndex < flows.size()) {
+            javafx.scene.text.TextFlow textFlow = flows.get(matchVisualIndex);
+            javafx.scene.text.LayoutInfo layoutInfo = textFlow.getLayoutInfo();
+            if (layoutInfo != null) {
+                try {
+                    javafx.scene.text.CaretInfo caretInfo = layoutInfo.caretInfoAt(charIdx, true);
+                    if (caretInfo != null && caretInfo.getSegmentCount() > 0) {
+                        javafx.geometry.Rectangle2D localCaret = caretInfo.getSegmentAt(0);
+                        // Transform local coordinates of the TextFlow to bracketLineOverlay coordinates
+                        javafx.geometry.Bounds localBounds = new javafx.geometry.BoundingBox(localCaret.getMinX(), localCaret.getMinY(), localCaret.getWidth(), localCaret.getHeight());
+                        javafx.geometry.Bounds overlayBounds = bracketLineOverlay.sceneToLocal(textFlow.localToScene(localBounds));
+
+                        return new javafx.geometry.Rectangle2D(overlayBounds.getMinX(), overlayBounds.getMinY(), overlayBounds.getWidth(), overlayBounds.getHeight());
                     }
+                } catch (Exception ex) {
+                    LOG.warning("caretInfoAt/localToScene threw an exception: " + ex.getMessage());
                 }
-                // Since we found the exact cell, we can break early whether we found layout info or not.
-                break;
             }
         }
 

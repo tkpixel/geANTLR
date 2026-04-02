@@ -1,0 +1,53 @@
+public class LookAtLog28 {
+    public static void main(String[] args) {
+        System.out.println("Look at my FXML changes:");
+        System.out.println("I did not change FXML in the last commit. So FXML is identical.");
+        System.out.println("Look at `updateBracketLine` in my last commit:");
+        System.out.println("```java");
+        System.out.println("double verticalX = indentCaret.getMinX();");
+        System.out.println("if (closeCaret.getMinY() >= openCaret.getMaxY()) {");
+        System.out.println("    connectionLine.setStartX(verticalX);");
+        System.out.println("    connectionLine.setStartY(openCaret.getMaxY());");
+        System.out.println("    connectionLine.setEndX(verticalX);");
+        System.out.println("    connectionLine.setEndY(closeCaret.getMinY());");
+        System.out.println("    connectionLine.setVisible(true);");
+        System.out.println("} else {");
+        System.out.println("    connectionLine.setVisible(false);");
+        System.out.println("}");
+        System.out.println("```");
+        System.out.println("Wait! Look at the FXML again! FXML is identical.");
+        System.out.println("Why is `indentCaret.getMinX()` failing?");
+        System.out.println("Wait! `TextPos indentPos = TextPos.ofLeading(openPos.index(), firstNonWsIdx);`");
+        System.out.println("What if the line is empty? `firstNonWsIdx` = 0. `indentPos = TextPos.ofLeading(openPos.index(), 0)`.");
+        System.out.println("What if it is not empty? `firstNonWsIdx` is correct.");
+        System.out.println("Wait... what if `caretInfo.getSegmentCount() > 0` is false for `indentPos`?");
+        System.out.println("No, we checked `caretInfoAt(0)` has 1 segment.");
+        System.out.println("Wait... is there ANY chance `targetPara` is wrong in `getCaretBounds`?");
+        System.out.println("I changed `.content > *` iteration:");
+        System.out.println("```java");
+        System.out.println("for (javafx.scene.Node cell : editorCodeArea.lookupAll(\".content > *\")) {");
+        System.out.println("    boolean isMatch = false;");
+        System.out.println("    try {");
+        System.out.println("        java.lang.reflect.Method getIndexMethod = cell.getClass().getMethod(\"getIndex\");");
+        System.out.println("        Object indexVal = getIndexMethod.invoke(cell);");
+        System.out.println("        if (indexVal instanceof Integer && ((Integer) indexVal) == targetPara) {");
+        System.out.println("            isMatch = true;");
+        System.out.println("        }");
+        System.out.println("    } catch (Exception e) {}");
+        System.out.println("```");
+        System.out.println("Wait! What if `TextCell.getIndex()` does NOT return the paragraph index???");
+        System.out.println("What if it returns the CELL index (0, 1, 2, 3...) based on the visible list, NOT the paragraph index??");
+        System.out.println("Ah! If `CodeArea` is highly virtualized, `getIndex()` might be the ABSOLUTE index in the model?");
+        System.out.println("In JavaFX `ListView`, `getIndex()` IS the index in the items list! So it is the paragraph index.");
+        System.out.println("Wait! `TestLookup3` output:");
+        System.out.println("```");
+        System.out.println("Cell 0 has TextFlow? true");
+        System.out.println("Cell 1 has TextFlow? true");
+        System.out.println("Cell 2 has TextFlow? true");
+        System.out.println("Cell 3 has TextFlow? true");
+        System.out.println("```");
+        System.out.println("There were exactly 4 lines in `\"FEHLER {\\n}\\nFEHLER {\\n}\"`. So the indices are 0, 1, 2, 3!");
+        System.out.println("So `getIndex()` IS the paragraph index!");
+        System.out.println("Let's scroll the text and see if `getIndex()` changes to 10, 11, 12... to be sure.");
+    }
+}
