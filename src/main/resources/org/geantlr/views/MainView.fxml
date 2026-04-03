@@ -26,11 +26,17 @@
             </HeaderBar>
             <ToolBar>
                 <Button text="Load Grammar" onAction="#loadGrammar" styleClass="button-outlined">
+                    <tooltip>
+                        <javafx.scene.control.Tooltip text="Load ANTLR Grammar (.g4)"/>
+                    </tooltip>
                     <graphic>
                         <FontIcon iconLiteral="mdi2f-file-code-outline" iconSize="20"/>
                     </graphic>
                 </Button>
                 <Button fx:id="loadDomainModelButton" text="Load Domain Model (.puml)" onAction="#loadDomainModel" styleClass="button-outlined">
+                    <tooltip>
+                        <javafx.scene.control.Tooltip text="Load PlantUML Domain Model (.puml)"/>
+                    </tooltip>
                     <graphic>
                         <FontIcon iconLiteral="mdi2f-file-tree" iconSize="16"/>
                     </graphic>
@@ -40,7 +46,10 @@
                 <!-- Spacer -->
                 <HBox HBox.hgrow="ALWAYS" />
 
-                <MenuButton styleClass="button-icon, no-arrow, flat">
+                <MenuButton styleClass="button-icon, no-arrow, flat" accessibleText="Main Menu" accessibleHelp="Opens the application menu">
+                    <tooltip>
+                        <javafx.scene.control.Tooltip text="Main Menu"/>
+                    </tooltip>
                     <graphic>
                         <FontIcon iconLiteral="mdi2m-menu" iconSize="20"/>
                     </graphic>

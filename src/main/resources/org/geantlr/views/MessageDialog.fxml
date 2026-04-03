@@ -28,7 +28,7 @@
             <Label fx:id="headerLabel" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
             <Label fx:id="contentLabel" wrapText="true" />
             <HBox alignment="CENTER_RIGHT" spacing="10">
-                <Button text="OK" onAction="#close" styleClass="accent" />
+                <Button text="OK" onAction="#close" styleClass="accent" defaultButton="true" cancelButton="true" />
             </HBox>
         </VBox>
     </center>

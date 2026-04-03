@@ -56,11 +56,11 @@
             <HBox spacing="10" alignment="CENTER_RIGHT">
                 <Button text="Cancel" onAction="#cancel"
                         accessibleText="Cancel"
-                        accessibleHelp="Cancels loading grammar and closes the dialog." />
+                        accessibleHelp="Cancels loading grammar and closes the dialog." cancelButton="true" />
                 <Button fx:id="loadBtn" text="Load Grammar" onAction="#load" styleClass="accent"
                         disable="true"
                         accessibleText="Load Grammar"
-                        accessibleHelp="Loads the selected grammar files." />
+                        accessibleHelp="Loads the selected grammar files." defaultButton="true" />
             </HBox>
         </VBox>
     </center>
