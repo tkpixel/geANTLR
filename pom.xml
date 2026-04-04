@@ -190,7 +190,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.12</version>
+                <version>0.8.14</version>
                 <configuration>
                     <!-- Skip jacoco by default since we target Java 25 which isn't fully supported yet -->
                     <skip>true</skip>
