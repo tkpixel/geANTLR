@@ -55,9 +55,6 @@ public class EditorViewController {
     private Button generateButton;
 
     @FXML
-    private ProgressIndicator generationProgress;
-
-    @FXML
     private Button selectTemplateButton;
 
     @FXML
@@ -260,10 +257,21 @@ public class EditorViewController {
     public void setViewModel(EditorViewModel viewModel) {
         this.viewModel = viewModel;
 
-        if (generateButton != null && promptTextArea != null && generationProgress != null && experimentalBox != null) {
-            generationProgress.visibleProperty().bind(this.viewModel.isGeneratingProperty());
+        if (generateButton != null && promptTextArea != null && experimentalBox != null) {
             generateButton.disableProperty().bind(this.viewModel.isGeneratingProperty().or(this.viewModel.selectedOllamaModelProperty().isNull()));
             selectTemplateButton.disableProperty().bind(this.viewModel.isGeneratingProperty());
+
+            this.viewModel.isGeneratingProperty().addListener((obs, oldVal, newVal) -> {
+                if (newVal) {
+                    ProgressIndicator pi = new ProgressIndicator();
+                    pi.setPrefSize(16, 16);
+                    generateButton.setGraphic(pi);
+                } else {
+                    org.kordamp.ikonli.javafx.FontIcon icon = new org.kordamp.ikonli.javafx.FontIcon("mdi2f-flask-outline");
+                    icon.setIconSize(16);
+                    generateButton.setGraphic(icon);
+                }
+            });
 
             experimentalBox.visibleProperty().bind(this.viewModel.experimentalModeProperty());
             experimentalBox.managedProperty().bind(this.viewModel.experimentalModeProperty());
