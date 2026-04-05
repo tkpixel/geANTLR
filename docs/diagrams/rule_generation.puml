@@ -1,0 +1,51 @@
+@startuml
+title Self-Correcting LLM Rule Generation Workflow
+
+actor User
+participant "RuleGenerationService" as Service
+participant "LoopAgent" as Loop
+participant "LlmAgent" as LLM
+participant "AntlrValidationTool" as Validator
+participant "DynamicGrammar\n(ANTLR)" as Grammar
+
+User -> Service: generateRule(prompt, template, model)
+activate Service
+
+Service -> Service: build System Prompt\n(includes raw ANTLR grammar)
+Service -> Loop: runAsync(prompt)
+activate Loop
+
+Loop -> LLM: generate
+activate LLM
+LLM -> LLM: Draft DSL code
+
+LLM -> Validator: call validateCode(dslCode)
+activate Validator
+Validator -> Grammar: parse(dslCode)
+activate Grammar
+alt syntax is valid
+    Grammar --> Validator: ParseTree (No errors)
+    Validator --> LLM: "SUCCESS"
+else syntax errors found
+    Grammar --> Validator: Syntax errors
+    Validator -> Validator: Extract offending token\n& expected tokens
+    Validator --> LLM: Detailed LLM-friendly error message
+end
+deactivate Grammar
+deactivate Validator
+
+alt If error was returned
+    LLM -> LLM: analyze error & self-correct
+    LLM -> Validator: call validateCode(correctedDslCode)
+    note right: This loop repeats until SUCCESS\nor max iterations (5) reached.
+end
+
+LLM --> Loop: Final Valid Code
+deactivate LLM
+Loop --> Service: Final Valid Code
+deactivate Loop
+
+Service -> Service: Strip markdown backticks
+Service --> User: Formatted DSL Code
+deactivate Service
+@enduml
