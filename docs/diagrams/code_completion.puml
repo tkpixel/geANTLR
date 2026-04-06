@@ -1,0 +1,37 @@
+@startuml
+title Code Completion Workflow
+
+actor User
+participant "Editor" as Editor
+participant "CodeCompletionService" as Service
+participant "PlantUmlParsingService" as DomainCache
+participant "ANTLR4 c3" as C3
+
+User -> Editor: Types / Requests completion
+Editor -> Service: getSuggestedTokens(grammar, text, caretPosition)
+activate Service
+
+Service -> Service: Extract dot-chain before caret
+
+alt Cursor is after a dot (e.g. "var.")
+    Service -> DomainCache: getDomainModelCache()
+    activate DomainCache
+    DomainCache --> Service: Map<String, DomainClass>
+    deactivate DomainCache
+
+    Service -> Service: Resolve variable type (regex or direct)
+    Service -> Service: Walk fields for chained access
+    Service --> Editor: List of domain fields
+else General token completion
+    Service -> Service: Lex input up to caret
+    Service -> C3: CodeCompletionCore.collectCandidates()
+    activate C3
+    C3 --> Service: Map of token IDs
+    deactivate C3
+
+    Service -> Service: Map token IDs to Display Names
+    Service --> Editor: List of grammar keywords/tokens
+end
+
+deactivate Service
+@enduml
