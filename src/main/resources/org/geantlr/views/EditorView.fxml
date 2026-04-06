@@ -32,9 +32,14 @@
                 <Label fx:id="templateNameLabel" styleClass="tag" visible="false" managed="false"/>
             </HBox>
             <HBox spacing="10" alignment="CENTER_LEFT">
-                <TextArea fx:id="promptTextArea" promptText="Enter natural language prompt..." HBox.hgrow="ALWAYS" wrapText="true" prefRowCount="2"/>
-                <Button fx:id="generateButton" text="Generieren" styleClass="accent"/>
-                <ProgressIndicator fx:id="generationProgress" visible="false" prefWidth="20" prefHeight="20"/>
+                <TextArea fx:id="promptTextArea" promptText="Enter natural language prompt..." HBox.hgrow="ALWAYS" wrapText="true" prefRowCount="2"
+                          accessibleText="Prompt Input" accessibleHelp="Enter the natural language prompt to generate rules."/>
+                <Button fx:id="generateButton" text="Generate" styleClass="accent"
+                        accessibleText="Generate Rule" accessibleHelp="Generates a grammar rule based on the prompt.">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2a-auto-fix" iconSize="16"/>
+                    </graphic>
+                </Button>
             </HBox>
         </VBox>
     </top>

@@ -55,9 +55,6 @@ public class EditorViewController {
     private Button generateButton;
 
     @FXML
-    private ProgressIndicator generationProgress;
-
-    @FXML
     private Button selectTemplateButton;
 
     @FXML
@@ -260,8 +257,17 @@ public class EditorViewController {
     public void setViewModel(EditorViewModel viewModel) {
         this.viewModel = viewModel;
 
-        if (generateButton != null && promptTextArea != null && generationProgress != null && experimentalBox != null) {
-            generationProgress.visibleProperty().bind(this.viewModel.isGeneratingProperty());
+        if (generateButton != null && promptTextArea != null && experimentalBox != null) {
+            javafx.scene.Node originalGraphic = generateButton.getGraphic();
+            this.viewModel.isGeneratingProperty().addListener((obs, oldVal, newVal) -> {
+                if (newVal) {
+                    ProgressIndicator spinner = new ProgressIndicator();
+                    spinner.setPrefSize(16, 16);
+                    generateButton.setGraphic(spinner);
+                } else {
+                    generateButton.setGraphic(originalGraphic);
+                }
+            });
             generateButton.disableProperty().bind(this.viewModel.isGeneratingProperty().or(this.viewModel.selectedOllamaModelProperty().isNull()));
             selectTemplateButton.disableProperty().bind(this.viewModel.isGeneratingProperty());
 
