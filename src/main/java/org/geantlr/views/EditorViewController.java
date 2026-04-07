@@ -26,6 +26,8 @@ import jfx.incubator.scene.control.richtext.SyntaxDecorator;
 import jfx.incubator.scene.control.richtext.model.CodeTextModel;
 import jfx.incubator.scene.control.richtext.model.RichParagraph;
 import jfx.incubator.scene.control.richtext.TextPos;
+import atlantafx.base.theme.Styles;
+import javafx.scene.control.Tooltip;
 import org.geantlr.services.SyntaxError;
 import org.geantlr.services.TokenHighlightMappingService;
 import org.geantlr.viewmodels.EditorViewModel;
@@ -457,15 +459,29 @@ public class EditorViewController {
                 this.viewModel.matchedBracketsProperty().addListener((_, _, _) -> updateBracketLine());
             }
 
-            this.viewModel.getSuggestedTokens().addListener((ListChangeListener<String>) _ -> {
-                suggestionsPane.getChildren().clear();
-                for (String token : this.viewModel.getSuggestedTokens()) {
-                    Button btn = new Button(token);
-                    btn.getStyleClass().addAll("pill-button");
-                    btn.setOnAction(_ -> viewModel.insertBaustein(token));
-                    suggestionsPane.getChildren().add(btn);
-                }
-            });
+            this.viewModel.getSuggestedTokens().addListener((ListChangeListener<String>) _ -> updateSuggestionsPane());
+            updateSuggestionsPane();
+        }
+    }
+
+    private void updateSuggestionsPane() {
+        if (suggestionsPane == null || this.viewModel == null) return;
+
+        suggestionsPane.getChildren().clear();
+        if (this.viewModel.getSuggestedTokens().isEmpty()) {
+            Label emptyLabel = new Label("No suggestions available");
+            emptyLabel.getStyleClass().add(Styles.TEXT_MUTED);
+            suggestionsPane.getChildren().add(emptyLabel);
+        } else {
+            for (String token : this.viewModel.getSuggestedTokens()) {
+                Button btn = new Button(token);
+                btn.getStyleClass().addAll("pill-button");
+                btn.setAccessibleText("Insert " + token);
+                btn.setAccessibleHelp("Inserts the suggested token at the current cursor position");
+                btn.setTooltip(new Tooltip("Insert '" + token + "'"));
+                btn.setOnAction(_ -> viewModel.insertBaustein(token));
+                suggestionsPane.getChildren().add(btn);
+            }
         }
     }
 
