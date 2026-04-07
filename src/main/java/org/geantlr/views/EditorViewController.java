@@ -100,6 +100,15 @@ public class EditorViewController {
     private final TokenHighlightMappingService tokenHighlightMappingService;
     private javafx.scene.canvas.Canvas bracketCanvas;
 
+    // Strong references for weak listeners to prevent premature garbage collection
+    private ListChangeListener<SyntaxError> errorsListener;
+    private ListChangeListener<Token> tokensListener;
+    private ListChangeListener<EditorViewModel.SearchMatch> searchMatchesListener;
+    private ListChangeListener<String> suggestedTokensListener;
+    private ListChangeListener<String> sceneStylesheetsListener;
+    private javafx.beans.value.ChangeListener<EditorViewModel.MatchedBracketsRecord> matchedBracketsListener;
+    private javafx.beans.value.ChangeListener<Number> currentMatchIndexListener;
+
     @Inject
     public EditorViewController(TokenHighlightMappingService tokenHighlightMappingService) {
         this.tokenHighlightMappingService = tokenHighlightMappingService;
@@ -202,8 +211,9 @@ public class EditorViewController {
                     );
                     // Tooltip-CSS mit der Scene synchron halten
                     syncTooltipStylesheets(newScene);
-                    newScene.getStylesheets().addListener((javafx.collections.ListChangeListener<String>) _ ->
-                        syncTooltipStylesheets(newScene));
+                    sceneStylesheetsListener = _ -> syncTooltipStylesheets(newScene);
+                    // ⚡ Bolt Optimization: Use WeakListChangeListener to prevent UI memory leaks when changing scenes
+                    newScene.getStylesheets().addListener(new javafx.collections.WeakListChangeListener<>(sceneStylesheetsListener));
                 }
             });
         }
@@ -379,27 +389,32 @@ public class EditorViewController {
                 }
             });
 
-            this.viewModel.getErrors().addListener((ListChangeListener<SyntaxError>) _ -> {
+            // ⚡ Bolt Optimization: Weak listeners to decouple View from ViewModel and prevent memory leaks
+            errorsListener = _ -> {
                 editorCodeArea.setSyntaxDecorator(null);
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
-            });
+            };
+            this.viewModel.getErrors().addListener(new javafx.collections.WeakListChangeListener<>(errorsListener));
 
-            this.viewModel.matchedBracketsProperty().addListener((_, _, _) -> {
+            matchedBracketsListener = (_, _, _) -> {
                 editorCodeArea.setSyntaxDecorator(null);
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
-            });
+            };
+            this.viewModel.matchedBracketsProperty().addListener(new javafx.beans.value.WeakChangeListener<>(matchedBracketsListener));
 
-            this.viewModel.getTokens().addListener((ListChangeListener<Token>) _ -> {
+            tokensListener = _ -> {
                 editorCodeArea.setSyntaxDecorator(null);
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
-            });
+            };
+            this.viewModel.getTokens().addListener(new javafx.collections.WeakListChangeListener<>(tokensListener));
 
-            this.viewModel.getSearchMatches().addListener((ListChangeListener<EditorViewModel.SearchMatch>) _ -> {
+            searchMatchesListener = _ -> {
                 editorCodeArea.setSyntaxDecorator(null);
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
-            });
+            };
+            this.viewModel.getSearchMatches().addListener(new javafx.collections.WeakListChangeListener<>(searchMatchesListener));
 
-            this.viewModel.currentMatchIndexProperty().addListener((_, _, newVal) -> {
+            currentMatchIndexListener = (_, _, newVal) -> {
                 editorCodeArea.setSyntaxDecorator(null);
                 editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
 
@@ -411,7 +426,8 @@ public class EditorViewController {
                         editorCodeArea.select(startPos, endPos);
                     }
                 }
-            });
+            };
+            this.viewModel.currentMatchIndexProperty().addListener(new javafx.beans.value.WeakChangeListener<>(currentMatchIndexListener));
 
             editorCodeArea.setSyntaxDecorator(createSyntaxDecorator());
 
@@ -454,10 +470,11 @@ public class EditorViewController {
                 bracketLineOverlay.heightProperty().addListener((_, _, _) -> updateBracketLine());
                 editorCodeArea.needsLayoutProperty().addListener((_, _, _) -> updateBracketLine());
                 editorCodeArea.addEventHandler(javafx.scene.input.ScrollEvent.ANY, _ -> updateBracketLine());
-                this.viewModel.matchedBracketsProperty().addListener((_, _, _) -> updateBracketLine());
+                // Using the already-stored strong reference for the weak listener
+                this.viewModel.matchedBracketsProperty().addListener(new javafx.beans.value.WeakChangeListener<>(matchedBracketsListener));
             }
 
-            this.viewModel.getSuggestedTokens().addListener((ListChangeListener<String>) _ -> {
+            suggestedTokensListener = _ -> {
                 suggestionsPane.getChildren().clear();
                 for (String token : this.viewModel.getSuggestedTokens()) {
                     Button btn = new Button(token);
@@ -465,7 +482,8 @@ public class EditorViewController {
                     btn.setOnAction(_ -> viewModel.insertBaustein(token));
                     suggestionsPane.getChildren().add(btn);
                 }
-            });
+            };
+            this.viewModel.getSuggestedTokens().addListener(new javafx.collections.WeakListChangeListener<>(suggestedTokensListener));
         }
     }
 
