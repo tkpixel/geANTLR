@@ -30,6 +30,20 @@
     wir definieren die Overrides in einem separaten Stylesheet das der
     toggleTheme()-Handler lädt – siehe theme-light.css) */
 
+/* ── Selection highlight – IntelliJ-style blue tint ────────────────── */
+.editor-code-area .selection {
+    -fx-fill: rgba(38, 79, 120, 0.55);
+}
+
+.editor-code-area .selection-highlight {
+    -fx-fill: rgba(38, 79, 120, 0.55);
+}
+
+/* ── Caret (cursor) styling – bright in dark mode for visibility ───── */
+.editor-code-area .caret {
+    -fx-stroke: #e0e0e0;
+}
+
 /* Custom CodeArea styling */
 .editor-code-area {
     -fx-font-family: "Consolas", "Courier New", monospace;

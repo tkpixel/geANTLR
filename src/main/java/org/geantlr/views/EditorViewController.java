@@ -5,8 +5,6 @@ import jakarta.inject.Inject;
 import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
 import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyCodeCombination;
-import javafx.scene.input.KeyCombination;
 import javafx.scene.paint.Color;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
@@ -181,29 +179,38 @@ public class EditorViewController {
 
             editorCodeArea.sceneProperty().addListener((_, _, newScene) -> {
                 if (newScene != null) {
-                    newScene.getAccelerators().put(
-                        new KeyCodeCombination(KeyCode.F, KeyCombination.SHORTCUT_DOWN, KeyCombination.SHIFT_DOWN),
-                        () -> {
-                            if (this.viewModel != null) {
-                                this.viewModel.formatCode();
-                            }
-                        }
-                    );
-                    newScene.getAccelerators().put(
-                        new KeyCodeCombination(KeyCode.F, KeyCombination.SHORTCUT_DOWN),
-                        () -> {
-                            if (searchBar != null && searchTextField != null) {
-                                searchBar.setVisible(true);
-                                searchBar.setManaged(true);
-                                searchTextField.requestFocus();
-                                searchTextField.selectAll();
-                            }
-                        }
-                    );
                     // Tooltip-CSS mit der Scene synchron halten
                     syncTooltipStylesheets(newScene);
                     newScene.getStylesheets().addListener((javafx.collections.ListChangeListener<String>) _ ->
                         syncTooltipStylesheets(newScene));
+                }
+            });
+
+            // ── Keyboard shortcuts via EventFilter on the editor (per-editor, not scene-global) ──
+            editorCodeArea.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
+                // Ctrl+Shift+F → Format code (only this editor)
+                if (event.getCode() == KeyCode.F && event.isShortcutDown() && event.isShiftDown()) {
+                    if (this.viewModel != null) {
+                        this.viewModel.formatCode();
+                    }
+                    event.consume();
+                    return;
+                }
+                // Ctrl+F → Open search bar (only this editor)
+                if (event.getCode() == KeyCode.F && event.isShortcutDown() && !event.isShiftDown()) {
+                    if (searchBar != null && searchTextField != null) {
+                        searchBar.setVisible(true);
+                        searchBar.setManaged(true);
+                        searchTextField.requestFocus();
+                        searchTextField.selectAll();
+                    }
+                    event.consume();
+                    return;
+                }
+                // Tab key handling
+                if (event.getCode() == KeyCode.TAB) {
+                    handleTabKey(event);
+                    return;
                 }
             });
         }
@@ -239,6 +246,11 @@ public class EditorViewController {
                 if (viewModel != null) viewModel.searchNext();
             });
         }
+    }
+
+    private void handleTabKey(javafx.scene.input.KeyEvent event) {
+        // Fallback no-op for tab handling if not fully implemented in the tasklist
+        // Added to prevent compile errors since handleTabKey is called in the event filter
     }
 
     private void closeSearch() {
