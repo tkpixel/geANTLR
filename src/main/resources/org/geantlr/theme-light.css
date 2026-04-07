@@ -14,3 +14,16 @@
     -geantlr-tooltip-border:     #cccccc;
 }
 
+/* ── Light-Mode: Selection highlight – soft blue ───────────────────── */
+.editor-code-area .selection {
+    -fx-fill: rgba(173, 214, 255, 0.55);
+}
+
+.editor-code-area .selection-highlight {
+    -fx-fill: rgba(173, 214, 255, 0.55);
+}
+
+/* ── Light-Mode: Caret (cursor) – dark for visibility on light bg ──── */
+.editor-code-area .caret {
+    -fx-stroke: #1a1a1a;
+}
