@@ -1,0 +1,79 @@
+@startuml
+actor "Caller (e.g. EditorViewModel)" as Caller
+participant "CodeFormattingService" as CFS
+participant "DynamicGrammar" as DG
+participant "CharStreams" as CS
+participant "LexerInterpreter" as Lexer
+participant "CommonTokenStream" as TokenStream
+participant "ParserInterpreter" as Parser
+participant "TokenStreamRewriter" as Rewriter
+participant "ParseTreeWalker" as Walker
+participant "FormatterListener" as Listener
+
+Caller -> CFS: formatCode(grammar, code)
+activate CFS
+
+CFS -> CS: fromString(code)
+activate CS
+CS --> CFS: CharStream
+deactivate CS
+
+CFS -> DG: createLexerInterpreter(CharStream)
+activate DG
+DG --> CFS: LexerInterpreter
+deactivate DG
+
+CFS -> Lexer: removeErrorListeners()
+
+CFS -> TokenStream: new(LexerInterpreter)
+activate TokenStream
+CFS -> TokenStream: fill()
+TokenStream --> CFS: CommonTokenStream
+deactivate TokenStream
+
+CFS -> DG: createParserInterpreter(CommonTokenStream)
+activate DG
+DG --> CFS: ParserInterpreter
+deactivate DG
+
+CFS -> Parser: removeErrorListeners()
+
+CFS -> DG: getParserGrammar().rules.values().iterator().next() (startRule)
+activate DG
+DG --> CFS: Rule
+deactivate DG
+
+CFS -> Parser: parse(startRule.index)
+activate Parser
+Parser --> CFS: ParseTree
+deactivate Parser
+
+CFS -> Rewriter: new(CommonTokenStream)
+activate Rewriter
+Rewriter --> CFS: TokenStreamRewriter
+deactivate Rewriter
+
+CFS -> Listener: new(TokenStreamRewriter, CommonTokenStream)
+activate Listener
+Listener --> CFS: FormatterListener
+deactivate Listener
+
+CFS -> Walker: walk(FormatterListener, ParseTree)
+activate Walker
+Walker -> Listener: visitTerminal(TerminalNode)
+activate Listener
+Listener -> Rewriter: insertBefore/insertAfter/replace/delete (modify hidden tokens)
+Listener --> Walker
+deactivate Listener
+Walker --> CFS
+deactivate Walker
+
+CFS -> Rewriter: getText()
+activate Rewriter
+Rewriter --> CFS: formattedText
+deactivate Rewriter
+
+CFS -> CFS: fallback regex cleanup (remove extra blank lines)
+CFS --> Caller: formattedCode
+deactivate CFS
+@enduml
