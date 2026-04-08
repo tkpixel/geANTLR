@@ -11,7 +11,6 @@ import jakarta.inject.Singleton;
 import jakarta.inject.Inject;
 import org.geantlr.services.DynamicGrammar;
 import org.geantlr.services.IGrammarLoaderService;
-import org.geantlr.services.TokenHighlightMappingService;
 import java.io.File;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
