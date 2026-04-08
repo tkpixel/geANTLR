@@ -53,8 +53,10 @@ public class MainViewController {
     private MenuItem viewGrammarMenuItem;
 
     @FXML
-    private Button loadDomainModelButton;
+    private Button loadGrammarButton;
 
+    @FXML
+    private Button loadDomainModelButton;
 
     @FXML
     private FontIcon themeIcon;
@@ -93,6 +95,64 @@ public class MainViewController {
             viewGrammarMenuItem.disableProperty().bind(viewModel.dynamicGrammarProperty().isNull());
         }
 
+        if (loadGrammarButton != null) {
+            javafx.scene.Node originalGrammarGraphic = loadGrammarButton.getGraphic();
+            viewModel.isLoadingGrammarProperty().addListener((obs, oldVal, newVal) -> {
+                if (newVal) {
+                    javafx.scene.control.ProgressIndicator spinner = new javafx.scene.control.ProgressIndicator();
+                    spinner.setPrefSize(16, 16);
+                    loadGrammarButton.setGraphic(spinner);
+                } else {
+                    loadGrammarButton.setGraphic(originalGrammarGraphic);
+                }
+            });
+            loadGrammarButton.disableProperty().bind(viewModel.isLoadingGrammarProperty());
+        }
+
+        if (loadDomainModelButton != null) {
+            javafx.beans.binding.BooleanBinding anyDomainParsing = new javafx.beans.binding.BooleanBinding() {
+                {
+                    for (EditorViewModel editor : viewModel.getActiveEditors()) {
+                        super.bind(editor.isParsingDomainModelProperty());
+                    }
+                    viewModel.getActiveEditors().addListener((ListChangeListener<EditorViewModel>) change -> {
+                        while (change.next()) {
+                            if (change.wasAdded()) {
+                                for (EditorViewModel added : change.getAddedSubList()) {
+                                    super.bind(added.isParsingDomainModelProperty());
+                                }
+                            }
+                            if (change.wasRemoved()) {
+                                for (EditorViewModel removed : change.getRemoved()) {
+                                    super.unbind(removed.isParsingDomainModelProperty());
+                                }
+                            }
+                        }
+                        invalidate();
+                    });
+                }
+
+                @Override
+                protected boolean computeValue() {
+                    for (EditorViewModel editor : viewModel.getActiveEditors()) {
+                        if (editor.isParsingDomainModelProperty().get()) return true;
+                    }
+                    return false;
+                }
+            };
+
+            javafx.scene.Node originalDomainGraphic = loadDomainModelButton.getGraphic();
+            anyDomainParsing.addListener((obs, oldVal, newVal) -> {
+                if (newVal) {
+                    javafx.scene.control.ProgressIndicator spinner = new javafx.scene.control.ProgressIndicator();
+                    spinner.setPrefSize(16, 16);
+                    loadDomainModelButton.setGraphic(spinner);
+                } else {
+                    loadDomainModelButton.setGraphic(originalDomainGraphic);
+                }
+            });
+            loadDomainModelButton.disableProperty().bind(anyDomainParsing);
+        }
 
         // Listen to active editors list
         viewModel.getActiveEditors().addListener((ListChangeListener<EditorViewModel>) change -> {
