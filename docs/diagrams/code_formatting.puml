@@ -1,8 +1,11 @@
 @startuml
-actor "Caller (e.g. EditorViewModel)" as Caller
-participant "CodeFormattingService" as CFS
-participant "DynamicGrammar" as DG
-participant "CharStreams" as CS
+skinparam style strictuml
+skinparam BoxPadding 10
+skinparam ParticipantPadding 10
+
+actor User
+participant "CodeFormattingService" as Service
+participant "DynamicGrammar" as Grammar
 participant "LexerInterpreter" as Lexer
 participant "CommonTokenStream" as TokenStream
 participant "ParserInterpreter" as Parser
@@ -10,70 +13,72 @@ participant "TokenStreamRewriter" as Rewriter
 participant "ParseTreeWalker" as Walker
 participant "FormatterListener" as Listener
 
-Caller -> CFS: formatCode(grammar, code)
-activate CFS
+User -> Service: formatCode(grammar, code)
+activate Service
 
-CFS -> CS: fromString(code)
-activate CS
-CS --> CFS: CharStream
-deactivate CS
+Service -> Grammar: createLexerInterpreter(input)
+activate Grammar
+Grammar --> Service: lexerInterpreter
+deactivate Grammar
 
-CFS -> DG: createLexerInterpreter(CharStream)
-activate DG
-DG --> CFS: LexerInterpreter
-deactivate DG
+Service -> Lexer: (tokenize)
+activate Lexer
+Lexer --> TokenStream: create
+deactivate Lexer
 
-CFS -> Lexer: removeErrorListeners()
-
-CFS -> TokenStream: new(LexerInterpreter)
+Service -> TokenStream: fill()
 activate TokenStream
-CFS -> TokenStream: fill()
-TokenStream --> CFS: CommonTokenStream
+TokenStream --> Service: TokenStream (filled)
 deactivate TokenStream
 
-CFS -> DG: createParserInterpreter(CommonTokenStream)
-activate DG
-DG --> CFS: ParserInterpreter
-deactivate DG
+Service -> Grammar: createParserInterpreter(tokenStream)
+activate Grammar
+Grammar --> Service: parserInterpreter
+deactivate Grammar
 
-CFS -> Parser: removeErrorListeners()
-
-CFS -> DG: getParserGrammar().rules.values().iterator().next() (startRule)
-activate DG
-DG --> CFS: Rule
-deactivate DG
-
-CFS -> Parser: parse(startRule.index)
+Service -> Parser: parse(startRuleIndex)
 activate Parser
-Parser --> CFS: ParseTree
+Parser --> Service: ParseTree
 deactivate Parser
 
-CFS -> Rewriter: new(CommonTokenStream)
+Service -> Rewriter: create(tokenStream)
 activate Rewriter
-Rewriter --> CFS: TokenStreamRewriter
+Rewriter --> Service: TokenStreamRewriter
 deactivate Rewriter
 
-CFS -> Listener: new(TokenStreamRewriter, CommonTokenStream)
-activate Listener
-Listener --> CFS: FormatterListener
-deactivate Listener
-
-CFS -> Walker: walk(FormatterListener, ParseTree)
+Service -> Walker: walk(FormatterListener, ParseTree)
 activate Walker
-Walker -> Listener: visitTerminal(TerminalNode)
-activate Listener
-Listener -> Rewriter: insertBefore/insertAfter/replace/delete (modify hidden tokens)
-Listener --> Walker
-deactivate Listener
-Walker --> CFS
+
+loop For each TerminalNode
+    Walker -> Listener: visitTerminal(node)
+    activate Listener
+
+    Listener -> Listener: check rules ({, }, ;, etc.)
+
+    Listener -> TokenStream: getHiddenTokensToLeft/Right(tokenIndex)
+    activate TokenStream
+    TokenStream --> Listener: hiddenTokens (whitespace)
+    deactivate TokenStream
+
+    alt Needs formatting adjustment
+        Listener -> Rewriter: insertBefore/insertAfter/replace(token, expectedWhitespace)
+        activate Rewriter
+        Rewriter --> Listener: queued instruction
+        deactivate Rewriter
+    end
+
+    Listener --> Walker: (continue)
+    deactivate Listener
+end
+
+Walker --> Service: (walk complete)
 deactivate Walker
 
-CFS -> Rewriter: getText()
+Service -> Rewriter: getText()
 activate Rewriter
-Rewriter --> CFS: formattedText
+Rewriter --> Service: formattedCode
 deactivate Rewriter
 
-CFS -> CFS: fallback regex cleanup (remove extra blank lines)
-CFS --> Caller: formattedCode
-deactivate CFS
+Service --> User: formattedCode
+deactivate Service
 @enduml
