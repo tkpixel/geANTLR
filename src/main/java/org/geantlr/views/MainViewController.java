@@ -63,7 +63,6 @@ public class MainViewController {
     private ProgressBar mainProgressBar;
 
     private final MainViewModel viewModel;
-    private final IGrammarLoaderService grammarLoaderService;
     private final TokenHighlightMappingService tokenHighlightMappingService;
     private final ApplicationContext context;
 
@@ -73,9 +72,8 @@ public class MainViewController {
     private final Map<EditorViewModel, Region> editorRegions = new HashMap<>();
 
     @Inject
-    public MainViewController(MainViewModel viewModel, IGrammarLoaderService grammarLoaderService, TokenHighlightMappingService tokenHighlightMappingService, ApplicationContext context) {
+    public MainViewController(MainViewModel viewModel, TokenHighlightMappingService tokenHighlightMappingService, ApplicationContext context) {
         this.viewModel = viewModel;
-        this.grammarLoaderService = grammarLoaderService;
         this.tokenHighlightMappingService = tokenHighlightMappingService;
         this.context = context;
     }
