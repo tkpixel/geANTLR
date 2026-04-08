@@ -4,6 +4,8 @@ import jakarta.inject.Singleton;
 import org.antlr.v4.Tool;
 import org.antlr.v4.tool.Grammar;
 import org.antlr.v4.tool.LexerGrammar;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,6 +23,8 @@ import java.util.stream.Stream;
 @Singleton
 public class GrammarLoaderService implements IGrammarLoaderService {
 
+    private static final Logger LOG = LoggerFactory.getLogger(GrammarLoaderService.class);
+
     private final List<File> importDirectories = new ArrayList<>();
 
     @Override
@@ -35,7 +39,7 @@ public class GrammarLoaderService implements IGrammarLoaderService {
                     .filter(p -> p.toString().endsWith(".g4"))
                     .collect(Collectors.toList());
         } catch (IOException e) {
-            e.printStackTrace();
+            LOG.error("Failed to read directory while finding grammar files: {}", directory, e);
             return Collections.emptyList();
         }
     }

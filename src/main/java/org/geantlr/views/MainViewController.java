@@ -39,9 +39,13 @@ import javafx.scene.control.ChoiceDialog;
 import java.nio.file.Files;
 import java.util.Optional;
 import javafx.application.Platform;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Singleton
 public class MainViewController {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MainViewController.class);
 
     @FXML
     private HeaderBar headerBar;
@@ -213,11 +217,11 @@ public class MainViewController {
                 alert.setContentText("Content saved to " + file.getAbsolutePath());
                 alert.showAndWait();
             } catch (IOException e) {
+                LOG.error("Failed to save content to file: {}", file.getAbsolutePath(), e);
                 Alert alert = new Alert(Alert.AlertType.ERROR);
                 alert.setTitle("Error Saving File");
                 alert.setHeaderText("Failed to save content to file");
                 alert.setContentText(e.getMessage());
-                e.printStackTrace();
                 alert.showAndWait();
             }
         }
@@ -313,7 +317,7 @@ public class MainViewController {
             stage.setScene(dialogScene);
             stage.showAndWait();
         } catch (IOException e) {
-            e.printStackTrace();
+            LOG.error("Failed to load MessageDialog view for title: {}", title, e);
             // Fallback to standard alert if custom dialog fails
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle(title);
@@ -360,7 +364,7 @@ public class MainViewController {
             stage.setScene(grammarScene);
             stage.show();
         } catch (IOException e) {
-            e.printStackTrace();
+            LOG.error("Failed to load GrammarView", e);
             showMessageDialog("Error Displaying Grammar", "Failed to load grammar view", e.getMessage());
         }
     }
@@ -411,12 +415,14 @@ public class MainViewController {
 
                 loadTask.addEventHandler(javafx.concurrent.WorkerStateEvent.WORKER_STATE_FAILED, e -> {
                     Throwable ex = loadTask.getException();
-                    if (ex != null) ex.printStackTrace();
+                    if (ex != null) {
+                        LOG.error("Task failed to load or compile grammar", ex);
+                    }
                     Platform.runLater(() -> showMessageDialog("Error Loading Grammar", "Failed to load or compile grammar", ex != null ? ex.getMessage() : "Unknown error"));
                 });
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("Unexpected error occurred while preparing to load grammar", e);
             Platform.runLater(() -> showMessageDialog("Error Loading Grammar", "Failed to load or compile grammar", e.getMessage()));
         }
     }
@@ -430,7 +436,7 @@ public class MainViewController {
             controller.setViewModel(editorViewModel);
             return region;
         } catch (IOException e) {
-            e.printStackTrace();
+            LOG.error("Failed to load EditorView", e);
             StackPane pane = new StackPane(new Label("Error loading editor"));
             pane.setStyle("-fx-border-color: red; -fx-background-color: -color-bg-default;");
             return pane;
