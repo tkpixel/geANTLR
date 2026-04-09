@@ -53,6 +53,9 @@ public class MainViewController {
     private MenuItem viewGrammarMenuItem;
 
     @FXML
+    private Button loadGrammarButton;
+
+    @FXML
     private Button loadDomainModelButton;
 
 
@@ -82,6 +85,20 @@ public class MainViewController {
 
     @FXML
     public void initialize() {
+        if (loadGrammarButton != null) {
+            loadGrammarButton.disableProperty().bind(viewModel.isLoadingGrammarProperty());
+            javafx.scene.Node originalGraphic = loadGrammarButton.getGraphic();
+            viewModel.isLoadingGrammarProperty().addListener((obs, oldVal, newVal) -> {
+                if (newVal) {
+                    javafx.scene.control.ProgressIndicator spinner = new javafx.scene.control.ProgressIndicator();
+                    spinner.setPrefSize(16, 16);
+                    loadGrammarButton.setGraphic(spinner);
+                } else {
+                    loadGrammarButton.setGraphic(originalGraphic);
+                }
+            });
+        }
+
         if (mainProgressBar != null) {
             updateMainProgressBarBinding();
             viewModel.getActiveEditors().addListener((ListChangeListener<EditorViewModel>) change -> {
