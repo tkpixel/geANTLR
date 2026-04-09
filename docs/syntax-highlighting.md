@@ -76,3 +76,10 @@ The application implements an IntelliJ "Darcula" theme. The generic CSS classes 
 .editor-code-area .comment       { -fx-fill: #808080; -fx-font-style: italic; }
 .editor-code-area .annotation    { -fx-fill: #bbb529; }
 ```
+## 5. Sequence Diagram
+
+The following sequence diagram illustrates the workflow of the dynamic syntax highlighting process from user input to rendering.
+
+![Syntax Highlighting Workflow](diagrams/syntax_highlighting.svg)
+
+*(If viewing the source `.puml`, render using the PlantUML tool.)*

@@ -1,0 +1,40 @@
+@startuml
+actor User
+participant "EditorViewController" as View
+participant "EditorViewModel" as ViewModel
+participant "AntlrGrammarService" as ParseService
+participant "TokenHighlightMappingService" as CSSMapper
+
+User -> View: Types code in CodeArea
+activate View
+View -> ViewModel: textContent property changes
+activate ViewModel
+
+ViewModel -> ParseService: parseText(grammar, text)
+activate ParseService
+ParseService --> ViewModel: ParseResult (tokens, errors)
+deactivate ParseService
+
+ViewModel -> ViewModel: computeTokenStyles(tokens, vocab)
+activate ViewModel
+loop for each Token
+    ViewModel -> CSSMapper: getCssClass(tokenType)
+    activate CSSMapper
+    CSSMapper --> ViewModel: CSS Class Name
+    deactivate CSSMapper
+end
+ViewModel --> View: updates tokenStylesByLine map
+deactivate ViewModel
+deactivate ViewModel
+
+View -> View: createSyntaxDecorator()
+activate View
+loop for each paragraph/line
+    View -> View: Retrieve TokenStyles
+    View -> View: Build RichParagraph with CSS classes
+end
+View --> User: Displays styled code
+deactivate View
+deactivate View
+
+@enduml
