@@ -23,7 +23,8 @@
                 <Insets top="10" right="10" bottom="10" left="10"/>
             </padding>
             <HBox spacing="10" alignment="CENTER_LEFT">
-                <Button fx:id="selectTemplateButton" text="Select Template" styleClass="button-outlined">
+                <Button fx:id="selectTemplateButton" text="Select Template" styleClass="button-outlined"
+                        accessibleText="Select Template" accessibleHelp="Selects a file to use as template">
                     <graphic>
                         <FontIcon iconLiteral="mdi2p-paperclip" iconSize="16"/>
                     </graphic>
