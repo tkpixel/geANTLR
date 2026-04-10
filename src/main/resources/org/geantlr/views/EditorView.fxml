@@ -23,12 +23,12 @@
                 <Insets top="10" right="10" bottom="10" left="10"/>
             </padding>
             <HBox spacing="10" alignment="CENTER_LEFT">
-                <Button fx:id="selectTemplateButton" text="Select Template" styleClass="button-outlined">
+                <Button fx:id="selectTemplateButton" text="Select Template" styleClass="button-outlined" accessibleText="Select Template" accessibleHelp="Opens a dialog to select a template file">
                     <graphic>
                         <FontIcon iconLiteral="mdi2p-paperclip" iconSize="16"/>
                     </graphic>
                 </Button>
-                <javafx.scene.control.ComboBox fx:id="modelComboBox" promptText="Select Model..."/>
+                <javafx.scene.control.ComboBox fx:id="modelComboBox" promptText="Select Model..." accessibleText="Select Model" accessibleHelp="Select the AI model to use for generation"/>
                 <Label fx:id="templateNameLabel" styleClass="tag" visible="false" managed="false"/>
             </HBox>
             <HBox spacing="10" alignment="CENTER_LEFT">
@@ -58,21 +58,21 @@
                     <Insets top="5" right="10" bottom="5" left="10"/>
                 </padding>
 
-                <javafx.scene.control.TextField fx:id="searchTextField" promptText="Search..." prefWidth="200" styleClass="search-field, rounded"/>
+                <javafx.scene.control.TextField fx:id="searchTextField" promptText="Search..." prefWidth="200" styleClass="search-field, rounded" accessibleText="Search Text Field" accessibleHelp="Enter text to search in the editor"/>
 
-                <javafx.scene.control.ToggleButton fx:id="searchMatchCaseToggle" styleClass="button-icon, no-arrow" accessibleText="Match Case">
+                <javafx.scene.control.ToggleButton fx:id="searchMatchCaseToggle" styleClass="button-icon, no-arrow" accessibleText="Match Case" accessibleHelp="Toggle case-sensitive search">
                     <graphic>
                         <FontIcon iconLiteral="mdi2f-format-letter-case" iconSize="16"/>
                     </graphic>
                     <tooltip><javafx.scene.control.Tooltip text="Match Case"/></tooltip>
                 </javafx.scene.control.ToggleButton>
-                <javafx.scene.control.ToggleButton fx:id="searchWholeWordToggle" styleClass="button-icon, no-arrow" accessibleText="Whole Word">
+                <javafx.scene.control.ToggleButton fx:id="searchWholeWordToggle" styleClass="button-icon, no-arrow" accessibleText="Whole Word" accessibleHelp="Toggle whole word search">
                     <graphic>
                         <FontIcon iconLiteral="mdi2f-format-text-variant" iconSize="16"/>
                     </graphic>
                     <tooltip><javafx.scene.control.Tooltip text="Whole Word"/></tooltip>
                 </javafx.scene.control.ToggleButton>
-                <javafx.scene.control.ToggleButton fx:id="searchRegexToggle" styleClass="button-icon, no-arrow" accessibleText="Regular Expression">
+                <javafx.scene.control.ToggleButton fx:id="searchRegexToggle" styleClass="button-icon, no-arrow" accessibleText="Regular Expression" accessibleHelp="Toggle regular expression search">
                     <graphic>
                         <FontIcon iconLiteral="mdi2r-regex" iconSize="16"/>
                     </graphic>
@@ -85,19 +85,19 @@
                     </padding>
                 </Label>
 
-                <Button fx:id="searchPrevButton" styleClass="button-icon" accessibleText="Previous Match">
+                <Button fx:id="searchPrevButton" styleClass="button-icon" accessibleText="Previous Match" accessibleHelp="Find previous occurrence of the search text">
                     <graphic>
                         <FontIcon iconLiteral="mdi2a-arrow-up" iconSize="16"/>
                     </graphic>
                     <tooltip><javafx.scene.control.Tooltip text="Previous Match (Shift+Enter)"/></tooltip>
                 </Button>
-                <Button fx:id="searchNextButton" styleClass="button-icon" accessibleText="Next Match">
+                <Button fx:id="searchNextButton" styleClass="button-icon" accessibleText="Next Match" accessibleHelp="Find next occurrence of the search text">
                     <graphic>
                         <FontIcon iconLiteral="mdi2a-arrow-down" iconSize="16"/>
                     </graphic>
                     <tooltip><javafx.scene.control.Tooltip text="Next Match (Enter)"/></tooltip>
                 </Button>
-                <Button fx:id="searchCloseButton" styleClass="button-icon" accessibleText="Close Search">
+                <Button fx:id="searchCloseButton" styleClass="button-icon" accessibleText="Close Search" accessibleHelp="Close the search bar">
                     <graphic>
                         <FontIcon iconLiteral="mdi2c-close" iconSize="16"/>
                     </graphic>
