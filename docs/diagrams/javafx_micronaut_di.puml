@@ -1,0 +1,44 @@
+@startuml
+actor User
+participant "App.java" as App
+participant "ApplicationContext" as Micronaut
+participant "FXMLLoader" as Loader
+participant "FxmlControllerFactory" as Factory
+participant "MainViewController" as Controller
+
+User -> App: Launch Application
+activate App
+
+App -> Micronaut: ApplicationContext.run()
+activate Micronaut
+Micronaut --> App: context
+deactivate Micronaut
+
+App -> Loader: new FXMLLoader("MainView.fxml")
+App -> Micronaut: getBean(FxmlControllerFactory.class)
+activate Micronaut
+Micronaut --> App: factoryInstance
+deactivate Micronaut
+
+App -> Loader: setControllerFactory(factoryInstance)
+
+App -> Loader: load()
+activate Loader
+
+Loader -> Factory: call(MainViewController.class)
+activate Factory
+
+Factory -> Micronaut: getBean(MainViewController.class)
+activate Micronaut
+Micronaut --> Factory: controllerInstance
+deactivate Micronaut
+
+Factory --> Loader: controllerInstance
+deactivate Factory
+
+Loader --> App: Parent (UI Root)
+deactivate Loader
+
+App --> User: Display Window
+deactivate App
+@enduml
