@@ -113,7 +113,7 @@
         <dependency>
             <groupId>io.micronaut</groupId>
             <artifactId>micronaut-inject</artifactId>
-            <version>4.3.4</version>
+            <version>4.10.21</version>
         </dependency>
         <dependency>
             <groupId>io.micronaut</groupId>
