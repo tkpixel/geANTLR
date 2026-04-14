@@ -100,6 +100,14 @@ public class EditorViewController {
     private final TokenHighlightMappingService tokenHighlightMappingService;
     private javafx.scene.canvas.Canvas bracketCanvas;
 
+    // Strongly referenced listener to prevent premature garbage collection
+    // and allow explicit removal to prevent memory leaks.
+    private final javafx.collections.ListChangeListener<String> stylesheetsListener = _ -> {
+        if (editorCodeArea.getScene() != null) {
+            syncTooltipStylesheets(editorCodeArea.getScene());
+        }
+    };
+
     @Inject
     public EditorViewController(TokenHighlightMappingService tokenHighlightMappingService) {
         this.tokenHighlightMappingService = tokenHighlightMappingService;
@@ -179,12 +187,14 @@ public class EditorViewController {
                 hoverPause.stop();
             });
 
-            editorCodeArea.sceneProperty().addListener((_, _, newScene) -> {
+            editorCodeArea.sceneProperty().addListener((_, oldScene, newScene) -> {
+                if (oldScene != null) {
+                    oldScene.getStylesheets().removeListener(stylesheetsListener);
+                }
                 if (newScene != null) {
                     // Tooltip-CSS mit der Scene synchron halten
                     syncTooltipStylesheets(newScene);
-                    newScene.getStylesheets().addListener((javafx.collections.ListChangeListener<String>) _ ->
-                        syncTooltipStylesheets(newScene));
+                    newScene.getStylesheets().addListener(stylesheetsListener);
                 }
             });
 
