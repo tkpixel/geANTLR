@@ -304,10 +304,10 @@ public class MainViewController {
             javafx.scene.Scene mainScene = editorSplitPane.getScene();
             if (mainScene != null) {
                 dialogScene.getStylesheets().setAll(mainScene.getStylesheets());
-                mainScene.getStylesheets().addListener(
-                    (javafx.collections.ListChangeListener<String>) _ ->
-                        dialogScene.getStylesheets().setAll(mainScene.getStylesheets())
-                );
+                javafx.collections.ListChangeListener<String> listener = _ ->
+                        dialogScene.getStylesheets().setAll(mainScene.getStylesheets());
+                mainScene.getStylesheets().addListener(listener);
+                stage.setOnHidden(e -> mainScene.getStylesheets().removeListener(listener));
             }
 
             stage.setScene(dialogScene);
@@ -383,10 +383,10 @@ public class MainViewController {
             javafx.scene.Scene mainScene = editorSplitPane.getScene();
             if (mainScene != null) {
                 dialogScene.getStylesheets().setAll(mainScene.getStylesheets());
-                mainScene.getStylesheets().addListener(
-                    (javafx.collections.ListChangeListener<String>) _ ->
-                        dialogScene.getStylesheets().setAll(mainScene.getStylesheets())
-                );
+                javafx.collections.ListChangeListener<String> listener = _ ->
+                        dialogScene.getStylesheets().setAll(mainScene.getStylesheets());
+                mainScene.getStylesheets().addListener(listener);
+                dialogStage.setOnHidden(e -> mainScene.getStylesheets().removeListener(listener));
             }
             dialogStage.setScene(dialogScene);
             dialogStage.showAndWait();
