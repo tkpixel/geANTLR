@@ -25,7 +25,7 @@
                 </center>
             </HeaderBar>
             <ToolBar>
-                <Button text="Load Grammar" onAction="#loadGrammar" styleClass="button-outlined">
+                <Button fx:id="loadGrammarButton" text="Load Grammar" onAction="#loadGrammar" styleClass="button-outlined" accessibleText="Load Grammar" accessibleHelp="Loads an ANTLR Grammar file">
                     <tooltip>
                         <javafx.scene.control.Tooltip text="Load ANTLR Grammar (.g4)"/>
                     </tooltip>
@@ -33,7 +33,7 @@
                         <FontIcon iconLiteral="mdi2f-file-code-outline" iconSize="20"/>
                     </graphic>
                 </Button>
-                <Button fx:id="loadDomainModelButton" text="Load Domain Model (.puml)" onAction="#loadDomainModel" styleClass="button-outlined">
+                <Button fx:id="loadDomainModelButton" text="Load Domain Model (.puml)" onAction="#loadDomainModel" styleClass="button-outlined" accessibleText="Load Domain Model" accessibleHelp="Loads a PlantUML Domain Model file">
                     <tooltip>
                         <javafx.scene.control.Tooltip text="Load PlantUML Domain Model (.puml)"/>
                     </tooltip>

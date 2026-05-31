@@ -53,6 +53,9 @@ public class MainViewController {
     private MenuItem viewGrammarMenuItem;
 
     @FXML
+    private Button loadGrammarButton;
+
+    @FXML
     private Button loadDomainModelButton;
 
 
@@ -68,6 +71,8 @@ public class MainViewController {
     private final ApplicationContext context;
 
     private boolean isDarkMode = true;
+
+    private final javafx.beans.property.BooleanProperty anyDomainModelLoading = new javafx.beans.property.SimpleBooleanProperty(false);
 
     // Track instances
     private final Map<EditorViewModel, Region> editorRegions = new HashMap<>();
@@ -91,6 +96,34 @@ public class MainViewController {
 
         if (viewGrammarMenuItem != null) {
             viewGrammarMenuItem.disableProperty().bind(viewModel.dynamicGrammarProperty().isNull());
+        }
+
+        if (loadGrammarButton != null) {
+            javafx.scene.Node originalGrammarGraphic = loadGrammarButton.getGraphic();
+            viewModel.isLoadingGrammarProperty().addListener((obs, oldVal, newVal) -> {
+                if (newVal) {
+                    javafx.scene.control.ProgressIndicator spinner = new javafx.scene.control.ProgressIndicator();
+                    spinner.setPrefSize(16, 16);
+                    loadGrammarButton.setGraphic(spinner);
+                } else {
+                    loadGrammarButton.setGraphic(originalGrammarGraphic);
+                }
+            });
+            loadGrammarButton.disableProperty().bind(viewModel.isLoadingGrammarProperty());
+        }
+
+        if (loadDomainModelButton != null) {
+            javafx.scene.Node originalDomainModelGraphic = loadDomainModelButton.getGraphic();
+            anyDomainModelLoading.addListener((obs, oldVal, newVal) -> {
+                if (newVal) {
+                    javafx.scene.control.ProgressIndicator spinner = new javafx.scene.control.ProgressIndicator();
+                    spinner.setPrefSize(16, 16);
+                    loadDomainModelButton.setGraphic(spinner);
+                } else {
+                    loadDomainModelButton.setGraphic(originalDomainModelGraphic);
+                }
+            });
+            loadDomainModelButton.disableProperty().bind(anyDomainModelLoading);
         }
 
 
@@ -253,11 +286,10 @@ public class MainViewController {
 
         mainProgressBar.visibleProperty().unbind();
         mainProgressBar.managedProperty().unbind();
+        anyDomainModelLoading.unbind();
 
-        // anyParsing: true wenn irgendein Editor gerade das Domain Model parst
-        javafx.beans.binding.BooleanBinding anyParsing = new javafx.beans.binding.BooleanBinding() {
+        javafx.beans.binding.BooleanBinding anyDomainModelParsing = new javafx.beans.binding.BooleanBinding() {
             {
-                super.bind(viewModel.isLoadingGrammarProperty());
                 for (EditorViewModel editor : viewModel.getActiveEditors()) {
                     super.bind(editor.isParsingDomainModelProperty());
                 }
@@ -265,13 +297,17 @@ public class MainViewController {
 
             @Override
             protected boolean computeValue() {
-                if (viewModel.isLoadingGrammarProperty().get()) return true;
                 for (EditorViewModel editor : viewModel.getActiveEditors()) {
                     if (editor.isParsingDomainModelProperty().get()) return true;
                 }
                 return false;
             }
         };
+
+        anyDomainModelLoading.bind(anyDomainModelParsing);
+
+        // anyParsing: true wenn irgendein Editor gerade das Domain Model parst oder Grammar geladen wird
+        javafx.beans.binding.BooleanBinding anyParsing = viewModel.isLoadingGrammarProperty().or(anyDomainModelParsing);
 
         mainProgressBar.visibleProperty().bind(anyParsing);
         mainProgressBar.managedProperty().bind(anyParsing);
