@@ -5,3 +5,7 @@
 ## 2026-04-01 - Prevented ViewModels from handling styling services
 **Learning:** Found an MVVM violation where `MainViewModel.loadGrammarAsync` accepted `TokenHighlightMappingService` (a CSS styling service) as a parameter. The ViewModel used it to rebuild the vocabulary mappings. This forced the ViewModel to coordinate UI-specific styling logic, breaking the rule that "CSS and visual states belong purely to the View."
 **Action:** Removed the `TokenHighlightMappingService` parameter from `MainViewModel.loadGrammarAsync`. Moved the `buildVocabularyMapping` call into `MainViewController`'s JavaFX Task success handler (`WorkerStateEvent.WORKER_STATE_SUCCEEDED`), keeping styling coordination strictly in the View layer.
+
+## 2026-05-31 - [Moved Debouncing to View Layer]
+**Learning:** Discovered an MVVM violation where `EditorViewModel` managed input rate-limiting using `javafx.animation.PauseTransition`. Because `PauseTransition` relies on the JavaFX Toolkit (which must be initialized), its presence in the ViewModel prevented pure, headless unit testing and coupled the ViewModel strictly to the JavaFX Application Thread.
+**Action:** Moved the instantiation and management of `PauseTransition` into the `EditorViewController` (the View layer). The View now listens to ViewModel property changes, handles the timers, and invokes simple action methods on the ViewModel (like `triggerParse()` or `executeSearch()`) upon timer completion. This cleanly decouples the ViewModel from JavaFX animations.

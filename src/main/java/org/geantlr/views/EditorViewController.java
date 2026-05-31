@@ -97,6 +97,9 @@ public class EditorViewController {
     private double lastScreenX, lastScreenY;
 
     private EditorViewModel viewModel;
+    private final PauseTransition typingDebounce = new PauseTransition(Duration.millis(300));
+    private final PauseTransition searchDebounce = new PauseTransition(Duration.millis(150));
+
     private final TokenHighlightMappingService tokenHighlightMappingService;
     private javafx.scene.canvas.Canvas bracketCanvas;
 
@@ -270,6 +273,25 @@ public class EditorViewController {
 
     public void setViewModel(EditorViewModel viewModel) {
         this.viewModel = viewModel;
+
+        typingDebounce.setOnFinished(_ -> {
+            viewModel.triggerParse();
+        });
+
+        searchDebounce.setOnFinished(_ -> {
+            viewModel.executeSearch();
+        });
+
+        this.viewModel.textContentProperty().addListener((_, _, newVal) -> {
+            viewModel.isTypingProperty().set(true);
+            typingDebounce.playFromStart();
+            searchDebounce.playFromStart();
+        });
+
+        this.viewModel.searchTextProperty().addListener((_, _, _) -> searchDebounce.playFromStart());
+        this.viewModel.searchMatchCaseProperty().addListener((_, _, _) -> searchDebounce.playFromStart());
+        this.viewModel.searchWholeWordProperty().addListener((_, _, _) -> searchDebounce.playFromStart());
+        this.viewModel.searchRegexProperty().addListener((_, _, _) -> searchDebounce.playFromStart());
 
         if (generateButton != null && promptTextArea != null && experimentalBox != null) {
             javafx.scene.Node originalGraphic = generateButton.getGraphic();

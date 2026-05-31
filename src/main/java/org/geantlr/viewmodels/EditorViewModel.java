@@ -17,9 +17,7 @@ import org.geantlr.services.CodeCompletionService;
 import org.geantlr.services.CodeFormattingService;
 import org.geantlr.services.SyntaxError;
 import org.antlr.v4.runtime.Token;
-import javafx.animation.PauseTransition;
 import javafx.application.Platform;
-import javafx.util.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
@@ -60,7 +58,6 @@ public class EditorViewModel {
 
     public record SearchMatch(int start, int end) {}
     private final ObservableList<SearchMatch> searchMatches = FXCollections.observableArrayList();
-    private final PauseTransition searchDebounce = new PauseTransition(Duration.millis(150));
 
     private final ObservableList<String> availableOllamaModels = FXCollections.observableArrayList();
     private final ObjectProperty<String> selectedOllamaModel = new SimpleObjectProperty<>();
@@ -81,7 +78,6 @@ public class EditorViewModel {
         return mainViewModel != null ? mainViewModel.experimentalModeProperty() : null;
     }
 
-    private final PauseTransition debounce = new PauseTransition(Duration.millis(300));
 
     public record ReplaceTextCommand(String text) {}
     private final ObjectProperty<ReplaceTextCommand> replaceTextCommand = new SimpleObjectProperty<>();
@@ -95,29 +91,14 @@ public class EditorViewModel {
         this.ruleGenerationService = ruleGenerationService;
         this.plantUmlParsingService = plantUmlParsingService;
 
-        debounce.setOnFinished(_ -> {
-            parseText(textContent.get());
-            isTyping.set(false);
-            updateSuggestions();
-        });
 
-        textContent.addListener((_, _, _) -> {
-            isTyping.set(true);
-            debounce.playFromStart();
-            searchDebounce.playFromStart();
-        });
 
-        searchDebounce.setOnFinished(_ -> executeSearch());
 
-        searchText.addListener((_, _, _) -> searchDebounce.playFromStart());
-        searchMatchCase.addListener((_, _, _) -> searchDebounce.playFromStart());
-        searchWholeWord.addListener((_, _, _) -> searchDebounce.playFromStart());
-        searchRegex.addListener((_, _, _) -> searchDebounce.playFromStart());
 
         loadAvailableOllamaModels();
     }
 
-    private void executeSearch() {
+    public void executeSearch() {
         String query = searchText.get();
         String text = textContent.get();
 
@@ -232,6 +213,13 @@ public class EditorViewModel {
                 availableOllamaModels.setAll(models);
             });
         });
+    }
+
+
+    public void triggerParse() {
+        parseText(textContent.get());
+        isTyping.set(false);
+        updateSuggestions();
     }
 
     private void parseText(String text) {
