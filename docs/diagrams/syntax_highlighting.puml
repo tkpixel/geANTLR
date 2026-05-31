@@ -1,0 +1,62 @@
+@startuml
+title Dynamic Syntax Highlighting Workflow
+
+actor User
+participant "EditorViewController\n(View)" as View
+participant "EditorViewModel\n(ViewModel)" as ViewModel
+participant "AntlrGrammarService\n(Model)" as Antlr
+participant "TokenHighlightMappingService" as Mapper
+
+== 1. Grammar Loading ==
+User -> View: Load Grammar
+View -> ViewModel: loadGrammarAsync()
+ViewModel -> View: DynamicGrammar loaded
+View -> Mapper: buildVocabularyMapping(vocabulary)
+activate Mapper
+note right
+  Pre-computes and caches CSS classes
+  (keyword, operator, string, etc.)
+  based on token rules.
+end note
+Mapper --> View
+deactivate Mapper
+
+== 2. Text Editing & Parsing ==
+User -> View: Types text in CodeArea
+View -> ViewModel: textContent property updated
+activate ViewModel
+ViewModel -> ViewModel: Debounce typing delay
+ViewModel -> Antlr: parseText(dynamicGrammar, text)
+activate Antlr
+Antlr --> ViewModel: ParseResult (tokens, errors)
+deactivate Antlr
+
+ViewModel -> ViewModel: computeTokenStyles(tokens)
+note right
+  Calculates line-relative start/end
+  bounds for each token.
+end note
+ViewModel -> View: tokens list updated (Event)
+deactivate ViewModel
+
+== 3. Rendering ==
+activate View
+View -> View: setSyntaxDecorator()
+View -> View: createRichParagraph(paragraphIndex)
+
+loop For each TokenStyle in current line
+    View -> Mapper: getCssClass(tokenType)
+    activate Mapper
+    Mapper --> View: cssClass
+    deactivate Mapper
+
+    alt tokenText.startsWith("@")
+        View -> View: override with "annotation"
+    end
+
+    View -> View: builder.addWithStyleNames(tokenText, cssClass)
+end
+
+View --> User: Displays styled text
+deactivate View
+@enduml
