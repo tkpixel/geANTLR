@@ -13,34 +13,36 @@ The highlighting process follows a strict Model-View-ViewModel (MVVM) separation
 2. **ViewModel (`EditorViewModel.java`):** Computes token bounds and delegates CSS class resolution to the mapping service. It packages this data into UI-agnostic `TokenStyle` records, storing them in a `tokenStylesByLine` map, which the View observes.
 3. **View (`EditorViewController.java`):** Consumes the `TokenStyle` data and applies it to the visual components of the JavaFX 25 `CodeArea` via a `SyntaxDecorator`.
 
+### Syntax Highlighting Workflow Diagram
+
+The following sequence diagram illustrates the workflow when text is edited, and how syntax highlighting styles are requested from the mapper and applied to the view.
+
+![Dynamic Syntax Highlighting Workflow](diagrams/syntax_highlighting.svg)
+
+*(If viewing the source `.puml`, render using: `java -jar plantuml.jar docs/diagrams/syntax_highlighting.puml`)*
+
 ---
 
 ## 2. Dynamic Token Classification (`TokenHighlightMappingService`)
 
 Instead of hardcoding rules (e.g., mapping `TOK_If` to `"keyword"`), the `TokenHighlightMappingService` analyzes the generic properties of an ANTLR token to classify it dynamically.
 
-When `getCssClass(symbolicName, tokenType, vocabulary, text)` is called, the service uses the following layered heuristics:
+When `buildVocabularyMapping(vocabulary)` is called (typically upon loading a new grammar), the service uses the following layered heuristics to cache CSS mappings for all valid tokens:
 
-### a) Annotation Detection
-Metadata annotations (e.g., `@Titel` or `@Lexer`) are identified by checking if the raw text starts with the `@` symbol. This bypasses the fact that ANTLR symbolic names for lexer rules cannot contain `@`.
-
-### b) Text-Based Structural Fallbacks
-If the token matches common code patterns, it is classified immediately:
-* **Comments:** `text.startsWith("//")` or `text.startsWith("/*")` or `text.startsWith("#")` -> `"comment"`
-* **Strings:** `text.matches("([\"']).*\\1")` -> `"string"`
-* **Numbers:** `text.matches("-?\\d+(\\.\\d+)?")` -> `"number"`
-* **Universal Keywords:** A static `Set` containing common programming language keywords (e.g., `if`, `else`, `return`, `struct`, `class`, `import`) -> `"keyword"`
-
-### c) Vocabulary Literal Name Inspection
+### a) Literal Name Inspection
 For keywords explicitly defined in the grammar (e.g., `WENN : 'Wenn';` or `funktionDecl : 'FUNKTION' ID;`), the service retrieves the literal string defined in the grammar via `vocabulary.getLiteralName(tokenType)`.
-If the literal name is a standard word character string (supporting Unicode, like German umlauts and hyphens, via the regex `'[A-Za-z_\u00C0-\u024F][A-Za-z0-9_\u00C0-\u024F-]*'`), it is classified as a `"keyword"`.
+* If the literal name is a standard word character string (supporting Unicode via the regex `^[a-zA-Z_][a-zA-Z0-9_]*$`), it is classified as a `"keyword"`.
+* If the literal name consists solely of symbols (via the regex `^[^a-zA-Z0-9_\s]+$`), it is classified as an `"operator"`.
 
-### d) Symbolic Name Suffix/Substring Checks
-If the vocabulary literal name fails, the service inspects the token's `symbolicName` (the uppercase rule name, e.g., `STRING_LITERAL`):
-* `upperName.contains("COMMENT")` -> `"comment"`
-* `upperName.contains("STRING")` -> `"string"`
-* `upperName.contains("NUMBER")`, `"INT"`, `"DIGIT"`, `"FLOAT"` -> `"number"`
+### b) Symbolic Name Suffix/Substring Checks
+If the vocabulary literal name fails to match, the service inspects the token's `symbolicName` (the uppercase rule name, e.g., `STRING_LITERAL`):
 * `upperName.endsWith("_KW")` or `upperName.contains("KEYWORD")` -> `"keyword"`
+* `upperName.contains("COMMENT")` -> `"comment"`
+* `upperName.contains("INT")`, `"FLOAT"`, `"NUM"`, `"DIGIT"` -> `"number"`
+* `upperName.contains("STRING")` or `upperName.contains("LITERAL")` -> `"string"` (Number checks are executed first to prevent accidental classification as a string).
+
+### c) View-Level Overrides (Annotation Detection)
+During actual rendering in `EditorViewController.java`, metadata annotations (e.g., `@Titel` or `@Lexer`) are identified by checking if the raw text starts with the `@` symbol. This bypasses the mapping service and hardcodes the `"annotation"` class, as ANTLR symbolic names for lexer rules cannot contain `@`.
 
 This cascading pipeline ensures that almost any custom grammar gets a highly accurate highlighting profile by default.
 
@@ -64,7 +66,7 @@ Instead, the string is segmented chronologically and built using `RichParagraph.
 
 ## 4. The CSS Theme (`theme.css`)
 
-The application implements an IntelliJ "Darcula" theme. The generic CSS classes returned by the mapping service (`keyword`, `string`, `number`, `comment`, `annotation`) are styled in the global stylesheet.
+The application implements an IntelliJ "Darcula" theme by default, and a light theme fallback. The generic CSS classes returned by the mapping service (`keyword`, `string`, `number`, `comment`, `annotation`, `operator`) are styled in the global stylesheet.
 
 **Important Rule:** The `CodeArea` requires using the `-fx-fill` property for foreground text coloring. Using `-fx-background-color` would erroneously color the block behind the text instead.
 
@@ -75,4 +77,5 @@ The application implements an IntelliJ "Darcula" theme. The generic CSS classes 
 .editor-code-area .number        { -fx-fill: #6897bb; }
 .editor-code-area .comment       { -fx-fill: #808080; -fx-font-style: italic; }
 .editor-code-area .annotation    { -fx-fill: #bbb529; }
+.editor-code-area .operator      { -fx-fill: -geantlr-syntax-operator; }
 ```
