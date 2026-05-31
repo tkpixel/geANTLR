@@ -100,6 +100,9 @@ public class EditorViewController {
     private final TokenHighlightMappingService tokenHighlightMappingService;
     private javafx.scene.canvas.Canvas bracketCanvas;
 
+    private javafx.beans.value.ChangeListener<Boolean> tooltipShowingListener;
+    private javafx.collections.ListChangeListener<String> sceneStylesheetListener;
+
     @Inject
     public EditorViewController(TokenHighlightMappingService tokenHighlightMappingService) {
         this.tokenHighlightMappingService = tokenHighlightMappingService;
@@ -179,12 +182,16 @@ public class EditorViewController {
                 hoverPause.stop();
             });
 
-            editorCodeArea.sceneProperty().addListener((_, _, newScene) -> {
+            editorCodeArea.sceneProperty().addListener((_, oldScene, newScene) -> {
+                if (oldScene != null && sceneStylesheetListener != null) {
+                    oldScene.getStylesheets().removeListener(sceneStylesheetListener);
+                }
+
                 if (newScene != null) {
                     // Tooltip-CSS mit der Scene synchron halten
                     syncTooltipStylesheets(newScene);
-                    newScene.getStylesheets().addListener((javafx.collections.ListChangeListener<String>) _ ->
-                        syncTooltipStylesheets(newScene));
+                    sceneStylesheetListener = _ -> syncTooltipStylesheets(newScene);
+                    newScene.getStylesheets().addListener(sceneStylesheetListener);
                 }
             });
 
@@ -870,11 +877,15 @@ public class EditorViewController {
     private void syncTooltipStylesheets(javafx.scene.Scene scene) {
         // Tooltip.getScene() ist erst nach dem ersten show() verfügbar.
         // Wir merken uns die Stylesheets und setzen sie beim nächsten showingProperty-Wechsel.
-        errorTooltip.showingProperty().addListener((_, _, showing) -> {
+        if (tooltipShowingListener != null) {
+            errorTooltip.showingProperty().removeListener(tooltipShowingListener);
+        }
+        tooltipShowingListener = (_, _, showing) -> {
             if (showing && errorTooltip.getScene() != null) {
                 errorTooltip.getScene().getStylesheets().setAll(scene.getStylesheets());
             }
-        });
+        };
+        errorTooltip.showingProperty().addListener(tooltipShowingListener);
         // Falls der Tooltip bereits sichtbar war und die Scene sich ändert (Theme-Toggle):
         if (errorTooltip.getScene() != null) {
             errorTooltip.getScene().getStylesheets().setAll(scene.getStylesheets());

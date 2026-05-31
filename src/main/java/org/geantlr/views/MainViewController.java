@@ -304,10 +304,10 @@ public class MainViewController {
             javafx.scene.Scene mainScene = editorSplitPane.getScene();
             if (mainScene != null) {
                 dialogScene.getStylesheets().setAll(mainScene.getStylesheets());
-                mainScene.getStylesheets().addListener(
-                    (javafx.collections.ListChangeListener<String>) _ ->
-                        dialogScene.getStylesheets().setAll(mainScene.getStylesheets())
-                );
+                javafx.collections.ListChangeListener<String> listener = _ ->
+                    dialogScene.getStylesheets().setAll(mainScene.getStylesheets());
+                mainScene.getStylesheets().addListener(listener);
+                stage.setOnHidden(_ -> mainScene.getStylesheets().removeListener(listener));
             }
 
             stage.setScene(dialogScene);
@@ -347,10 +347,10 @@ public class MainViewController {
             if (mainScene != null) {
                 grammarScene.getStylesheets().setAll(mainScene.getStylesheets());
                 // Bei Theme-Wechsel synchron halten
-                mainScene.getStylesheets().addListener(
-                    (javafx.collections.ListChangeListener<String>) _ ->
-                        grammarScene.getStylesheets().setAll(mainScene.getStylesheets())
-                );
+                javafx.collections.ListChangeListener<String> listener = _ ->
+                    grammarScene.getStylesheets().setAll(mainScene.getStylesheets());
+                mainScene.getStylesheets().addListener(listener);
+                stage.setOnHidden(_ -> mainScene.getStylesheets().removeListener(listener));
             } else {
                 // Fallback: nur theme.css
                 String customCss = getClass().getResource("/org/geantlr/theme.css").toExternalForm();
@@ -383,10 +383,10 @@ public class MainViewController {
             javafx.scene.Scene mainScene = editorSplitPane.getScene();
             if (mainScene != null) {
                 dialogScene.getStylesheets().setAll(mainScene.getStylesheets());
-                mainScene.getStylesheets().addListener(
-                    (javafx.collections.ListChangeListener<String>) _ ->
-                        dialogScene.getStylesheets().setAll(mainScene.getStylesheets())
-                );
+                javafx.collections.ListChangeListener<String> listener = _ ->
+                    dialogScene.getStylesheets().setAll(mainScene.getStylesheets());
+                mainScene.getStylesheets().addListener(listener);
+                dialogStage.setOnHidden(_ -> mainScene.getStylesheets().removeListener(listener));
             }
             dialogStage.setScene(dialogScene);
             dialogStage.showAndWait();
