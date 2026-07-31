@@ -7,6 +7,9 @@ The system is designed to provide robust, out-of-the-box syntax coloring for *an
 
 ## 1. The Architecture (MVVM)
 
+![Syntax Highlighting Workflow](diagrams/syntax_highlighting.svg)
+
+
 The highlighting process follows a strict Model-View-ViewModel (MVVM) separation of concerns:
 
 1. **Model (ANTLR Parsing):** The raw text from the editor is parsed by the dynamically loaded ANTLR `LexerInterpreter` and `ParserInterpreter` to produce an Abstract Syntax Tree (AST) and a raw `List<Token>`.

@@ -1,0 +1,31 @@
+@startuml
+actor User
+participant "EditorViewModel" as ViewModel
+participant "AntlrGrammarService" as ParseService
+participant "TokenHighlightMappingService" as MappingService
+participant "EditorViewController" as View
+
+User -> ViewModel: setTextContent(text)
+activate ViewModel
+ViewModel -> ParseService: parseText(grammar, text)
+activate ParseService
+ParseService -> ParseService: lex and parse (async)
+ParseService --> ViewModel: ParseResult (tokens, errors)
+deactivate ParseService
+
+ViewModel -> MappingService: getCssClass(tokenType)
+activate MappingService
+MappingService -> MappingService: analyze vocabulary & literal names
+MappingService --> ViewModel: CSS Class String (e.g. "keyword")
+deactivate MappingService
+
+ViewModel -> ViewModel: computeTokenStyles(tokens, vocab)
+ViewModel --> View: update tokenStylesByLine
+deactivate ViewModel
+
+activate View
+View -> View: createSyntaxDecorator()
+View -> View: build RichParagraph segments with CSS classes
+View --> User: Render Highlighted Code
+deactivate View
+@enduml
