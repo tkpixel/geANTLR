@@ -664,7 +664,9 @@ public class EditorViewController {
                         targetFlow = findTextFlow(cell);
                         break;
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                    LOG.finest("Reflection getIndex lookup failed: " + ignored.getMessage());
+                }
             }
         }
 
