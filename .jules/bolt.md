@@ -1,3 +1,3 @@
-## 2024-05-24 - [Avoid Regex on Single-Line Tokens]
-**Learning:** During syntax highlighting in `EditorViewModel.computeTokenStyles`, performing `String.split("\r?\n", -1)` on every single token causes heavy regex compilation and array allocation overhead, especially because the vast majority of tokens are single-line strings.
-**Action:** Use a fast-path check `text.indexOf('\n') == -1` to completely bypass regex processing and array allocation for single-line tokens.
+## 2026-07-31 - Fix Memory Leaks via Strong Listener References
+**Learning:** In JavaFX, adding anonymous or lambda `ListChangeListener`s to globally long-lived objects like `Scene.getStylesheets()` from short-lived nodes or dialogs causes severe memory leaks because they are never properly garbage collected. Furthermore, wrapping listeners without strong references causes them to be garbage collected prematurely.
+**Action:** Always store the `ListChangeListener` in a strongly-referenced class field and explicitly remove it using `.removeListener()` when the node's `sceneProperty` changes (like in `EditorViewController`) or when the dialog/Stage is closed via `stage.addEventHandler(javafx.stage.WindowEvent.WINDOW_HIDDEN, ...)` (like in `MainViewController`).

@@ -98,6 +98,12 @@ public class EditorViewController {
 
     private EditorViewModel viewModel;
     private final TokenHighlightMappingService tokenHighlightMappingService;
+    // ⚡ Bolt: Store listener in a strong reference to be able to remove it and prevent memory leaks
+    private final javafx.collections.ListChangeListener<String> sceneStylesheetListener = _ -> {
+        if (editorCodeArea.getScene() != null) {
+            syncTooltipStylesheets(editorCodeArea.getScene());
+        }
+    };
     private javafx.scene.canvas.Canvas bracketCanvas;
 
     @Inject
@@ -179,12 +185,14 @@ public class EditorViewController {
                 hoverPause.stop();
             });
 
-            editorCodeArea.sceneProperty().addListener((_, _, newScene) -> {
+            editorCodeArea.sceneProperty().addListener((_, oldScene, newScene) -> {
+                if (oldScene != null) {
+                    oldScene.getStylesheets().removeListener(sceneStylesheetListener);
+                }
                 if (newScene != null) {
                     // Tooltip-CSS mit der Scene synchron halten
                     syncTooltipStylesheets(newScene);
-                    newScene.getStylesheets().addListener((javafx.collections.ListChangeListener<String>) _ ->
-                        syncTooltipStylesheets(newScene));
+                    newScene.getStylesheets().addListener(sceneStylesheetListener);
                 }
             });
 
