@@ -50,6 +50,9 @@ public class MainViewController {
     private SplitPane editorSplitPane;
 
     @FXML
+    private Button loadGrammarButton;
+
+    @FXML
     private MenuItem viewGrammarMenuItem;
 
     @FXML
@@ -82,6 +85,20 @@ public class MainViewController {
 
     @FXML
     public void initialize() {
+        if (loadGrammarButton != null) {
+            javafx.scene.Node originalGraphic = loadGrammarButton.getGraphic();
+            viewModel.isLoadingGrammarProperty().addListener((obs, oldVal, newVal) -> {
+                if (newVal) {
+                    javafx.scene.control.ProgressIndicator spinner = new javafx.scene.control.ProgressIndicator();
+                    spinner.setPrefSize(16, 16);
+                    loadGrammarButton.setGraphic(spinner);
+                } else {
+                    loadGrammarButton.setGraphic(originalGraphic);
+                }
+            });
+            loadGrammarButton.disableProperty().bind(viewModel.isLoadingGrammarProperty());
+        }
+
         if (mainProgressBar != null) {
             updateMainProgressBarBinding();
             viewModel.getActiveEditors().addListener((ListChangeListener<EditorViewModel>) change -> {
